@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/chaos/python-v2ray/"}
+{"dg-publish":true,"dg-home":false,"tags":[],"categories":["chaos"],"description":null,"summary":null,"draft":false,"isCJKLanguage":true,"date":"2021-11-06","lastmod":"2022-11-23","title":"python 实现 v2ray 配置自动更新","permalink":"/chaos/python-v2ray/","dgPassFrontmatter":true}
 ---
 
 
