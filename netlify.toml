@@ -12,3 +12,7 @@
   to = "/404"
   status = 404
 
+[[redirects]]
+  from = "/love"
+  to = "https://jiangyingjuner.notion.site/8ada7240c1024d799309f3ca6ec863bf"
+  status = 200
