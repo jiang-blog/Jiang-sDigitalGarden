@@ -9,8 +9,8 @@
 
 [[redirects]]
   from = "/love"
-  to = "jiangyingjuner.notion.site/8ada7240c1024d799309f3ca6ec863bf"
-  status = 200
+  to = "https://jiangyingjuner.notion.site/8ada7240c1024d799309f3ca6ec863bf"
+  force = true
 
 [[redirects]]
   from = "/*"
