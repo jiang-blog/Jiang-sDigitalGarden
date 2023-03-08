@@ -1,5 +1,5 @@
 ---
-{"tags":[],"categories":[],"description":null,"summary":null,"draft":true,"dg-publish":true,"dg-home":false,"isCJKLanguage":true,"title":"传输层","date":"2022-12-11","lastmod":"2022-12-20","permalink":"/code/3-computer-network/computer-network-0b/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/code/3-computer-network/computer-network-0b/","title":"传输层"}
 ---
 
 
