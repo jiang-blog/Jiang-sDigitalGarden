@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"dg-home":false,"tags":[],"categories":[],"description":null,"summary":null,"draft":true,"isCJKLanguage":true,"title":"HTTP","date":"2022-11-15","lastmod":"2022-12-05","permalink":"/code/3-computer-network/computer-network-1-http/","dgPassFrontmatter":true}
+{"dg-publish":true,"dg-home":false,"tags":[],"categories":[],"description":null,"summary":null,"draft":true,"isCJKLanguage":true,"title":"HTTP","date":"2022-11-15","lastmod":"2022-12-06","permalink":"/code/3-computer-network/computer-network-1-http/","dgPassFrontmatter":true}
 ---
 
 
@@ -11,7 +11,7 @@
 
 ### 相关协议
 
-**HTTP**(HyperText Transfer Protocol，超文本传输协议(严谨译名应为超文本转移协议))是web文档传递的规范，**WWW**(万维网)的三项构建技术之一，另两个是把 SGML(Standard Generalized Markup Language，标准通用标记语言)作为页面的文本标记语言的 **HTML**(HyperText Markup Language，超文本标记语言)以及指定文档所在地址的 **URL**(Uniform Resource Locator，统一资源定位符)
+**HTTP**(HyperText Transfer Protocol，超文本传输协议(严谨译名应为超文本转移协议))是Web文档传递的规范，**WWW**(万维网)的三项构建技术之一，另两个是把 SGML(Standard Generalized Markup Language，标准通用标记语言)作为页面的文本标记语言的 **HTML**(HyperText Markup Language，超文本标记语言)以及指定文档所在地址的 **URL**(Uniform Resource Locator，统一资源定位符)
 
 **DNS 协议**提供通过域名查找 IP 地址，或逆向从 IP 地址反查域名的服务
 
@@ -108,7 +108,7 @@ text-align: center;
 
 由程序创建的HTML内容称为**动态内容**，而事先准备好的HTML内容称为**静态内容**。
 
-**CGI**(Common Gateway Interface，通用网关接口)是为提供网络服务而执行控制台应用 (或称命令行界面）的程序。在 CGI 的作用下，程序会对请求内容做出相应的动作，比如创建动态内容。
+**CGI**(Common Gateway Interface，通用网关接口)是为提供网络服务而执行控制台应用 (或称命令行界面)的程序。在 CGI 的作用下，程序会对请求内容做出相应的动作，比如创建动态内容。
 
 **Servlet** 是一种能在服务器上创建动态内容的程序，解决了CGI创建程序带来的服务器负担。
 Servlet 是用 Java语言实现的一个接口，属于面向企业级 Java(JavaEE，JavaEnterprise Edition)的一部分。
@@ -118,6 +118,8 @@ Servlet 是用 Java语言实现的一个接口，属于面向企业级 Java(Java
 HTTP协议用于客户端和服务端的通信，使用 **URI** 定位互联网上的资源，通过**请求报文**和**响应报文**建立通信
 
 HTTP协议基于TCP协议，默认应用端口为80
+> [!attention] 
+> HTTP/3改用UDP协议
 
 ### HTTP报文
 
@@ -278,16 +280,23 @@ HTTP/1.1 规范允许一台 HTTP 服务器搭建多个 Web 站点，因此利用
 
 ### 转发服务器
 
-#### 代理
+#### 代理/缓存
 
-接收客户端发送的请求后转发给其他服务器。代理*不改变请求 URI*，会直接发送给前方持有资源的目标服务器。
+**代理服务器**(proxy server)也叫**Web缓存器**(Web cache)，其接收客户端发送的请求后转发给其他服务器。代理*不改变请求 URI*，会直接发送给前方持有资源的目标服务器。
 每次通过代理服务器转发请求或响应时，会追加写入`Via`首部信息
 
-*用途*：利用缓存技术(稍后讲解)减少网络带宽的流量，组织内部针对特定网站的访问控制，以获取访问日志为主要目的，等等
+*用途*：利用缓存技术减少网络带宽的流量，组织内部针对特定网站的访问控制，以获取访问日志为主要目的等等
 
 *类型*：**缓存/非缓存代理**、**透明/非透明代理**
 代理转发响应时，缓存代理(Caching Proxy)会预先将资源的副本(缓存)保存在代理服务器上
 转发请求或响应时，不对报文做任何加工的代理类型被称为透明代理
+
+**缓存服务器**是代理服务器的一种，并归类在缓存代理类型中，缓存可以存在于缓存服务器内或客户端浏览器中。判定缓存过期后，会向源服务器确认资源的有效性，若判断浏览器缓存失效，浏览器会再次请求新资源。***缓存服务器既是服务器又是客户端。*** 当它接收浏览器的请求并发回响应时是服务器。当它向初始服务器发出请求并接收响应时是客户端。
+
+- 降低客户端响应时间
+- 减轻服务器负载
+
+对于缓存的版本问题，HTTP使用**条件GET**(conditional GET)方法，在GET方法的首部字段中加入`If-Modified-Since`字段以确认缓存文件是否改变
 
 #### 网关
 
@@ -300,10 +309,6 @@ HTTP/1.1 规范允许一台 HTTP 服务器搭建多个 Web 站点，因此利用
 在相隔甚远的客户端和服务器两者之间进行中转，并保持双方通信连接的应用程序
 
 *用途*：用 SSL 等加密手段进行通信，确保客户端能与服务器进行安全的通信。
-
-### 缓存
-
-**缓存服务器**是代理服务器的一种，并归类在缓存代理类型中，缓存可以存在于缓存服务器内或客户端浏览器中。判定缓存过期后，会向源服务器确认资源的有效性，若判断浏览器缓存失效，浏览器会再次请求新资源。
 
 ## HTTPS
 
