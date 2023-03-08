@@ -1,5 +1,5 @@
 ---
-{"tags":[],"categories":[],"description":null,"summary":null,"draft":true,"dg-publish":true,"dg-home":false,"isCJKLanguage":true,"title":"链路层","date":"2023-01-04","lastmod":"2023-01-12","permalink":"/code/3-computer-network/computer-network-0d/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/code/3-computer-network/computer-network-0d/","title":"链路层"}
 ---
 
 
