@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"dg-home":false,"tags":[],"categories":["chaos"],"description":null,"summary":null,"draft":true,"isCJKLanguage":true,"date":"2022-06-08","lastmod":"2022-11-23","title":"Picgo 配置","permalink":"/chaos/picgo/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/chaos/picgo/","title":"Picgo 配置"}
 ---
 
 
