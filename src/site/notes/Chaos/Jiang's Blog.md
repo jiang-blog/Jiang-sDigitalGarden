@@ -1,5 +1,5 @@
 ---
-{"tags":["gardenEntry"],"categories":["chaos"],"description":null,"summary":null,"draft":true,"dg-publish":true,"dg-home":true,"isCJKLanguage":true,"title":"Jiang's Blog","date":"2022-11-23","lastmod":"2022-11-29","permalink":"/chaos/jiang-s-blog/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/chaos/jiang-s-blog/","title":"Jiang's Blog","tags":["gardenEntry","gardenEntry","gardenEntry","gardenEntry","gardenEntry","gardenEntry","gardenEntry","gardenEntry"]}
 ---
 
 
