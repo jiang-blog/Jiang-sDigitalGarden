@@ -1,5 +1,5 @@
 ---
-{"tags":[],"categories":[],"description":null,"summary":null,"draft":true,"dg-publish":true,"dg-home":false,"isCJKLanguage":true,"title":"应用层","date":"2022-12-04","lastmod":"2022-12-11","permalink":"/code/3-computer-network/computer-network-0a/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/code/3-computer-network/computer-network-0a/","title":"应用层"}
 ---
 
 
