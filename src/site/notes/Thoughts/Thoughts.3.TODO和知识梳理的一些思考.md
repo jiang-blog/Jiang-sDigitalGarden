@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"dg-home":false,"tags":[],"categories":["thoughts"],"description":null,"summary":null,"draft":false,"isCJKLanguage":true,"date":"2022-11-14","lastmod":"2022-12-04","title":"TODO和知识梳理的一些思考","permalink":"/thoughts/thoughts-3-todo/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/thoughts/thoughts-3-todo/","title":"TODO和知识梳理的一些思考"}
 ---
 
 
