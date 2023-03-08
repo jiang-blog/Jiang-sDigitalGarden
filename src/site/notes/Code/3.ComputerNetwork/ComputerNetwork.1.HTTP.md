@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"dg-home":false,"tags":[],"categories":[],"description":null,"summary":null,"draft":true,"isCJKLanguage":true,"title":"HTTP","date":"2022-11-15","lastmod":"2022-12-06","permalink":"/code/3-computer-network/computer-network-1-http/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/code/3-computer-network/computer-network-1-http/","title":"HTTP"}
 ---
 
 
