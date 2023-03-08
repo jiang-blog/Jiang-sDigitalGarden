@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"dg-home":false,"tags":[],"categories":["chaos"],"description":null,"summary":null,"draft":false,"isCJKLanguage":true,"date":"2022-03-02","lastmod":"2022-11-23","title":"Word 技巧","permalink":"/chaos/word/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/chaos/word/","title":"Word 技巧"}
 ---
 
 
