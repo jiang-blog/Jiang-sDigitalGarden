@@ -1,5 +1,5 @@
 ---
-{"tags":[],"categories":[],"description":null,"summary":null,"draft":true,"dg-publish":true,"dg-home":false,"isCJKLanguage":true,"title":"WSL服务自启动","date":"2023-02-16","lastmod":"2023-02-16","permalink":"/code/5-tools/tools-1a-wsl/","dgPassFrontmatter":true}
+{"dg-publish":true,"permalink":"/code/5-tools/tools-1a-wsl/","title":"WSL服务自启动"}
 ---
 
 
