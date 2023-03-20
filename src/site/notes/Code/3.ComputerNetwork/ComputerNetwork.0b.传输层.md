@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/code/3-computer-network/computer-network-0b/","title":"传输层"}
+{"dg-publish":true,"permalink":"/Code/3.ComputerNetwork/ComputerNetwork.0b.传输层/","title":"传输层","noteIcon":""}
 ---
 
 
