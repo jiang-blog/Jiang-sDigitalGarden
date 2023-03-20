@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/code/5-tools/tools-1a-wsl/","title":"WSL服务自启动"}
+{"dg-publish":true,"permalink":"/Code/5.Tools/Tools.1a.WSL问题汇总/","title":"WSL问题汇总","noteIcon":""}
 ---
 
 
@@ -47,3 +47,42 @@ systemd=true
 command="service ssh start; service cron start"
 ```
 以上命令默认以root身份运行
+
+## Mysql 安装
+
+错误: root密码未设置
+```bash
+sudo cat /etc/mysql/debian.cnf # 查看默认账号
+mysql -u{default name} -p{default password} # 使用默认账号登录
+alter user 'root'@'localhost' identified with mysql_native_password by '123456'; # 修改root密码为123456
+```
+
+错误: su: warning: cannot change directory to/nonexistent: No such file or directory
+```bash
+sudo service mysql stop
+sudo usermod -d /var/lib/mysql/ mysql
+sudo service mysql start
+```
+
+错误: Can't connect to local MySQL server through socket '/var/run/mysqld/mysqld.sock' 
+==**存疑**==
+打开/etc/mysql/my.cnf，在末尾加入
+```ini
+[mysqld]                                                                                                                
+bind-address = 0.0.0.0                                                                                                    
+user=root                                                                                                               
+pid-file     = /var/run/mysqld/mysqld.pid                                                                                
+socket       = /var/run/mysqld/mysqld.sock                                                                               
+port         = 3306                                                                                                                                                                                                                              
+
+[client]                                                                                                                
+port         = 3306                                                                                                      
+socket       = /var/run/mysqld/mysqld.sock
+```
+然后执行
+```bash
+chmod 777 -R /var/run/mysqld
+chmod 777 -R /var/lib/mysql
+chmod 777 -R /var/log/mysql
+```
+重启mysqld服务
