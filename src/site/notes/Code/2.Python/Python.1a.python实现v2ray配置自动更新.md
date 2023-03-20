@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/code/2-python/python-1a-python-v2ray/","title":"python 实现 v2ray 配置自动更新"}
+{"dg-publish":true,"permalink":"/Code/2.Python/Python.1a.python实现v2ray配置自动更新/","title":"python 实现 v2ray 配置自动更新","noteIcon":""}
 ---
 
 
