@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/code/3-computer-network/computer-network-1-http/","title":"HTTP"}
+{"dg-publish":true,"permalink":"/Code/3.ComputerNetwork/ComputerNetwork.1.HTTP/","title":"HTTP","noteIcon":""}
 ---
 
 
