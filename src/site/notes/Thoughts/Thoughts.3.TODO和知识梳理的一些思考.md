@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/thoughts/thoughts-3-todo/","title":"TODO和知识梳理的一些思考"}
+{"dg-publish":true,"permalink":"/Thoughts/Thoughts.3.TODO和知识梳理的一些思考/","title":"TODO和知识梳理的一些思考","noteIcon":""}
 ---
 
 
