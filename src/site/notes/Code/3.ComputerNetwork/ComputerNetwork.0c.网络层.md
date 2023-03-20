@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/code/3-computer-network/computer-network-0c/","title":"网络层"}
+{"dg-publish":true,"permalink":"/Code/3.ComputerNetwork/ComputerNetwork.0c.网络层/","title":"网络层","noteIcon":""}
 ---
 
 
