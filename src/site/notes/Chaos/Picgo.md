@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/chaos/picgo/","title":"Picgo 配置"}
+{"dg-publish":true,"permalink":"/Chaos/Picgo/","title":"Picgo 配置","noteIcon":""}
 ---
 
 
