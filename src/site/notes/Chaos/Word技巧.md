@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/chaos/word/","title":"Word 技巧"}
+{"dg-publish":true,"permalink":"/Chaos/Word技巧/","title":"Word 技巧","noteIcon":""}
 ---
 
 
