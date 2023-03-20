@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/code/3-computer-network/computer-network-0/","title":"计算机网络"}
+{"dg-publish":true,"permalink":"/Code/3.ComputerNetwork/ComputerNetwork.0.计算机网络/","title":"计算机网络","noteIcon":""}
 ---
 
 
@@ -9,7 +9,7 @@
 
 ## 互联网是什么？
 
-从*硬件构成*来看，互联网是以**主机(端系统)**和 **分组交换设备**为节点，**通信链路**为边，层层连接形成的*网络的网络*
+从*硬件构成*来看，互联网是以**主机(端系统)** 和 **分组交换设备**为节点，**通信链路**为边，层层连接形成的*网络的网络*
 - 分组交换设备：路由器(网络层)/交换机(数据链路层)
 
 从*服务*来看，互联网是由**分布式应用**和**为其提供通信服务的基础设施**组成的
@@ -41,9 +41,9 @@ $$ \frac{网络核心 - 接入网 - 网络边缘}{物理媒体} $$
 
 方式二：
 
-根据节点的关系划分**ISP网络**(Internet Service Providers)，互联网由接入ISP、区域ISP(regional ISP）、第一层ISP（tier-1 ISP）、**ICP**(Internet Content Providers）、**PoP**（Point of Presence）和**IXP**(Internet Exchange Point)组成。
+根据节点的关系划分**ISP网络**(Internet Service Providers)，互联网由接入ISP、区域ISP、第一层ISP、**ICP**(Internet Content Providers）、**PoP**（Point of Presence）和**IXP**(Internet Exchange Point)组成。
 
-![|600](https://image.jiang849725768.asia/2022/202212021759977.png)
+![](https://image.jiang849725768.asia/2022/202212021759977.png)
 
 端系统通过接入ISP与互联网相连，接入ISP上是区域ISP，再之上是全局/全球ISP，底层ISP可以同时连接多个更高层级的ISP（多宿），连接使用PoP，位于同一层级（对等）的ISP可以相互连接，IXP提供多个ISP的一起对等
 ICP为Google, Microsoft等自构建的服务网络，目的是更好更便宜地与用户连接，其同时与各级ISP连接
