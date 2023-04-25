@@ -154,6 +154,52 @@ type WaitGroup interface{
 }
 ```
 
+## Atomic
+
+```Go
+type atomic interface{
+  func AddT(addr *T, delta T)(new T)
+  func StoreT(addr *T, val T)
+  func LoadT(addr *T) (val T)
+  func SwapT(addr *T, new T) (old T)
+  func CompareAndSwapT(addr *T, old, new T) (swapped bool)
+}
+```
+
+Atomic 提供的方法皆为原子操作
+原子操作就是指这一系列的操作在 cpu 上执行时是一个不可分割的整体，要么全部执行，要么全部不执行，不会受到其他操作的影响
+
+## Context
+
+Context 主要用来解决 goroutine 之间**退出通知**、**元数据传递**的功能
+
+```Go
+// context.Context
+type Context interface {
+   // 设置 Context 截止时间
+   Deadline() (deadline time.Time, ok bool)
+   // 返回一个 Channel，当Context被取消或者到达截止时间，这个 Channel 就会被关闭
+   Done() <-chan struct{}
+   // 返回Context结束的原因，仅在Done返回的Channel被关闭时才会返回非空值
+   // 如果是Context被取消，返回 Canceled
+   // 如果是Context超时，返回 DeadlineExceeded
+   Err() error
+   // 从Context中获取键对应的值
+   Value(key interface{}) interface{}
+}
+```
+Context 的方法都是幂等的，即多次调用返回的值相同
+
+通过 `context.Backgroud()` 或 `context.TODO()` 进行**根 context 创建**后，可利用 `context` 包中提供的 With 系列函数来**创建功能 context**
+```Go
+func WithCancel(parent Context) (ctx Context, cancel CancelFunc)
+func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc)
+func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc)
+func WithValue(parent Context, key, val interface{}) Context
+```
+
+通过功能 context 即可统一子 gouroutine 的时间或主动控制子 goroutine 的取消，子 gouroutine 中通过 `Context.Done()` 接收停止信号并退出
+
 ## Container
 
 ### List
