@@ -316,7 +316,7 @@ appendfsync everysec # 每秒将缓冲区刷入磁盘
 
 - Always 策略为每次写入 AOF 文件数据后，主线程立刻执行 fsync() 函数
 - (default)Everysec 策略为每秒**创建一个子线程异步执行** fsync() 函数
-- No 策略就是**程序本身**永不执行 fsync() 函数
+- No 策略就是**程序本身**永不执行 fsync() 函数(一般 Linux 系统每30秒刷入一次)
 
 3 种写回策略都**无法完美解决*主进程阻塞*和*减少数据丢失*的平衡问题**
 - 由于写操作命令执行成功后才记录到 AOF 日志，所以不会阻塞当前写操作命令的执行，但是执行fsync() 函数**可能会给下一个命令带来阻塞风险**
@@ -334,6 +334,8 @@ AOF 日志文件大小随写操作命令增加而增大，Redis 可以在 AOF �
 重写过程中发生的新的写操作记录同时记录在 *AOF 缓冲区*和 *AOF 重写缓冲区*
 新 AOF 文件创建完毕后 Redis 将重写缓冲区内容追加到新的 AOF 文件，再用新 AOF 文件替换原来的 AOF 文件
 
+重写缓冲区避免了父子进程写入同一文件而竞争文件系统锁进而对 Redis 主线程的性能造成影响
+
 ![image.png](https://image.jiang849725768.asia/2023/202303131715428.png)
 
 重写触发条件:
@@ -345,11 +347,29 @@ auto-aof-rewrite-percentage 100
 auto-aof-rewrite-min-size 64mb
 ```
 
+##### 阻塞
+
+- 创建子线程过程中调用 fork 函数做内存拷贝的时候如果需要拷贝的数据量很大有可能会发生阻塞
+- 父进程修改了共享数据，就会发生写时复制，对 bigkey 的拷贝也会发生阻塞
+- 主进程调用信号处理函数，将aof重写缓冲区内的命令写入到新aof文件中
+
 #### MP-AOF
 
 RedisV7.0采用了新的AOF重写方案MP-AOF(多部件AOF)
 MP-AOF 将 AOF 文件分为 *BASE AOF* 和 *INCR AOF* 两个文件，发生重写时 redis **将旧 BASE AOF 以及 INCR AOF 合并**重写为新的 BASE AOF，同时新建一个 INCR AOF 文件以供 aof_buf 书写
 Redis 通过 *manifest* 文件记录当前有效的 BASE AOF 以及 INCR AOF ，重写完成后通过更新该文件记录更新 AOF
+
+MP-AOF 主要的意义在于减少了 aof rewrite buffer 的内存开销，以及发送和写入 aof rewrite buffer 时的 CPU 与 IO 开销
+
+#### 宕机
+
+数据丢失：
+Always 会丢失一个时间循环(epoll wait)里面的所有命令
+Everysec 策略下可能会丢失 2s 的数据，因为如果当主线程尝试进行 `write()` 系统调用时发现2s 内的上一次子线程的刷盘还未结束，主线程会跳过该次写入以避免阻塞，但如果超过2s 则主线程会阻塞等待上一子线程刷盘结束
+
+重写宕机：
+V7.0以前宕机恢复后可以使用旧 AOF 文件恢复数据
+V7.0以后使用旧 base aof + 旧 incr aof + 新 incr aof 文件恢复数据
 
 ### 混合持久化
 
