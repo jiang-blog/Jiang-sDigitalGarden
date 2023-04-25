@@ -572,7 +572,7 @@ HTTP/1.1使用的认证方式：BASIC 认证(基本认证)、DIGEST 认证(摘�
 2. 用户选择将发送的客户端证书后，客户端会把客户端证书信息以 `Client Certificate` 报文方式发送给服务器。
 3. 服务器验证客户端证书验证通过后方可领取证书内客户端的公开密钥，然后开始 HTTPS 加密通信。
 
-多数情况下和[[ComputerNetwork.1.HTTP#表单认证\|表单认证]]组合形成一种**双因素认证**(Two-factor authentication)来使用
+多数情况下和[[Code/3.ComputerNetwork/CN.0a1.HTTP协议#表单认证\|表单认证]]组合形成一种**双因素认证**(Two-factor authentication)来使用
 
 ### 表单认证
 
