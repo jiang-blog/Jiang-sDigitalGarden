@@ -50,7 +50,7 @@ redo log 是物理日志，记录数据页的修改，比如**对 XXX 表空间�
 
 ### 作用
 
-InnoDB使用内存中的Buffer pool 缓冲池提高数据库的读写性能，但可能丢失未写入磁盘的信息
+InnoDB 使用内存中的 Buffer pool 缓冲池提高数据库的读写性能，但可能丢失未写入磁盘的信息，redo log 保证了 Buffer pool 的持久性
 
 
 ### 刷盘
