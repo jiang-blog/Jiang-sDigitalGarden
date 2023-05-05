@@ -196,7 +196,7 @@ commit; -- 提交事务，将结果写入数据库
 
 如果sql语句执行出现问题，事务调用rollback回滚所有已经执行成功的sql语句
 
-**Mysql 中默认采用 autocommit 模式**，如果没有`start transaction`显式开启一个事务，则每个sql语句都被当作一个事务执行
+Mysql 中默认采用 *autocommit* 模式，如果没有`start transaction`显式开启一个事务，则**每个sql语句都被当作一个事务执行**
 如关闭autocommit，则所有sql语句都在同一事务中，直到执行commit或rollback结束该事务并开启一个新事务
 
 此外存在一些特殊命令，在事务中执行这些命令时会马上强制执行 commit 提交事务，如 DDL 语句(create table/drop table/alter table)和lock tables 语句等等
@@ -216,7 +216,7 @@ ACID是原子性、一致性、隔离性和持久性的缩写
 
 **事务一旦提交，它对数据库的改变就应该是永久性的**
 
-使用redo log保证buffer pool中的数据不随Mysql非正常停止而消失
+使用 redo log 保证 buffer pool 中的数据不随 Mysql 非正常停止而消失
 
 #### 隔离性
 
