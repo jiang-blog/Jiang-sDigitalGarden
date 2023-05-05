@@ -5,21 +5,45 @@
 
 # Go内存管理
 
+## 内存管理设计
 
-## Golang堆内存管理
+### 分配方法
 
-> [9、一站式Golang内存管理洗髓经 (yuque.com)](https://www.yuque.com/aceld/golang/qzyivn#VyQ8I)
 > [Go 语言内存分配器的实现原理 | Go 语言设计与实现 (draveness.me)](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/)
+
+编程语言的内存分配器一般包含两种分配方法，一种是线性分配器，另一种是空闲链表分配器
+
+#### 线性分配
+
+线性分配是一种高效的内存分配方法，但是有较大的局限性
+当我们使用线性分配器时，只需要在内存中维护一个指向内存特定位置的指针，如果用户程序向分配器申请内存，分配器只需要检查剩余的空闲内存、返回分配的内存区域并修改指针在内存中的位置
+
+虽然线性分配器实现为它带来了较快的执行速度以及较低的实现复杂度，但是线性分配器无法在内存被释放时重用内存
+
+因为线性分配器具有上述特性，所以需要与合适的垃圾回收算法配合使用，例如：标记压缩（Mark-Compact）、复制回收（Copying GC）和分代回收（Generational GC）等算法，它们可以通过拷贝的方式整理存活对象的碎片，将空闲内存定期合并，这样就能利用线性分配器的效率提升内存分配器的性能
+
+#### 空闲链表分配
+
+空闲链表分配器可以重用已经被释放的内存，它在内部会维护一个类似链表的数据结构
+当用户程序申请内存时，空闲链表分配器会依次遍历空闲的内存块，找到足够大的内存，然后申请新的资源并修改链表
+
+因为不同的内存块通过指针构成了链表，所以使用这种方式的分配器可以重新利用回收的资源，但是因为分配内存时需要遍历链表，所以它的时间复杂度是 O(n)
+
+空闲链表分配器可以选择不同的策略在链表中的内存块中进行选择，最常见的是以下四种：
+- 首次适应 - 从链表头开始遍历，选择第一个大小大于申请内存的内存块
+- 循环首次适应 - 从上次遍历的结束位置开始遍历，选择第一个大小大于申请内存的内存块
+- 最优适应 - 从链表头遍历整个链表，选择最合适的内存块
+- 隔离适应 - 将内存分割成多个链表，每个链表中的内存块大小相同，申请内存时先找到满足条件的链表，再从链表中选择合适的内存块
 
 ### TCMalloc
 
-TCMalloc(Thread Cache Malloc)为每个 Thread 预分配一块缓存 ThreadCache，每个 Thread 在申请内存时首先会先从 ThreadCache 申请，此外所有 ThreadCache 缓存共享一个叫 CentralCache 的中心缓存
+TCMalloc(Thread Cache Malloc)核心理念是使用多级缓存将对象根据大小分类，并按照类别实施不同的分配策略
 
-当 ThreadCache 的缓存不足时，就会从 CentralCache 获取，当 ThreadCache 的缓存充足或者过多时，则会将内存退还给 CentralCache
-CentralCache 由于共享，访问需要加锁；ThreadCache 作为线程独立的第一交互内存，访问无需加锁
+1. 每个 Thread 预分配有一块缓存 ThreadCache，每个 Thread 在申请内存时首先会先从 ThreadCache 申请，此外所有 ThreadCache 缓存共享一个叫 CentralCache 的中心缓存
+2. 当 ThreadCache 的缓存不足时，就会从 CentralCache 获取，当 ThreadCache 的缓存充足或者过多时，则会将内存退还给 CentralCache
+3. 当 CentralCache 没有足够内存时或 Thread 需要申请的大对象超过 Cache 容纳的内存块单元大小时，会从一个全局共享内存堆 PageHeap 取内存，当 CentralCache 内存过多或者充足，则将低命中内存块退还给 PageHeap
 
-当 CentralCache 没有足够内存时会从一个全局共享内存堆 PageHeap 取，当 CentralCache 内存过多或者充足，则将低命中内存块退还 PageHeap
-Thread 需要申请的大对象超过 Cache 容纳的内存块单元大小，也会直接从 PageHeap 获取
+CentralCache 和 PageHeap 由于共享，访问需要加锁，ThreadCache 作为线程独立的第一交互内存，访问无需加锁
 
 > ![image.png](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651133032054-ea888b96-0fb0-46ea-ac26-4c38abc2b66f.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_89%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10%2Fresize%2Cw_1038%2Climit_0)
 
@@ -40,59 +64,154 @@ TCMalloc 将虚拟内存空间划分为多份同等大小的**Page**，每个 Pa
 #### 对象分配
 
 TCMalloc 的小对象分配
->![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651133672724-0ac13b26-1623-444a-8c81-0b2120b2e2fa.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_80%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
+>![|525](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651133672724-0ac13b26-1623-444a-8c81-0b2120b2e2fa.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_80%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
 
 中对象分配
->![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651133803693-486e9b4a-ffb1-4932-a989-1df013b601c1.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_71%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
+>![|525](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651133803693-486e9b4a-ffb1-4932-a989-1df013b601c1.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_71%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
 
 大对象分配
->![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651133987470-28f3feb2-8a9e-45be-a41b-596b1bd54e8d.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_81%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
+>![|525](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651133987470-28f3feb2-8a9e-45be-a41b-596b1bd54e8d.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_81%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
 
+## Go 堆内存管理
 
-### Page&Object
+> [9、一站式Golang内存管理洗髓经 (yuque.com)](https://www.yuque.com/aceld/golang/qzyivn#VyQ8I)
+> [Go 语言内存分配器的实现原理 | Go 语言设计与实现 (draveness.me)](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/)
 
-Golang内存管理借鉴了TCMalloc的设计思想
->![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651134285363-999c7495-7834-4785-a6ea-c44b4615ff19.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_58%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
+Go 内存管理借鉴了 TCMalloc 的设计思想，运行时根据对象的大小将对象分成微对象、小对象和大对象三种：
+| 类别 | 大小      |
+| ------ | ----------- |
+| 微对象 | (0, 16B)    |
+| 小对象 | [16B, 32KB] |
+| 大对象 | (32KB, +∞) |
+
+同时 GO 内存管理也使用 MCache，MCentral 和 MHeap 三个组件分级管理内存，最小的内存管理单元为 MSpan
+
+>![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651134285363-999c7495-7834-4785-a6ea-c44b4615ff19.png)
+
+### 内存单位
 
 各层级间内存交换的单位如下：
->![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651134740690-c1fc15a5-af2a-474c-adaa-ddc4bb05a5e3.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_89%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
+>![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651134740690-c1fc15a5-af2a-474c-adaa-ddc4bb05a5e3.png)
 
-**Page**的大小依然是8KB，Page 是 Golang 内存管理系统与操作系统交互衡量内存容量的基本单元
-**Object**是 Golang 内存管理内部本身用来给对象存储内存的基本单元，一个 Span 在初始化时会被分成多个 Object
-**Object Size**指协程应用逻辑一次向 Golang 内存申请的 Object 对象大小
+#### Object
 
-### MSpan
+*Object*是 Go 内存管理内部用来存储对象内存的基本单元
 
-Span的名称改为**mspan**，依然表示一组连续的Page
-**Size Class**在Golang内存管理中针对Object Size而非Page Size来划分内存，Golang给内存池中固定划分了66种Size Class
-**Span Class**是Golang内存管理额外定义的规格属性，针对Span大小的级别来进行划分。**一个Size Class对应两个Span Class**，其中一个Span存放需要GC扫描的对象(包含指针的对象)，另一个Span存放不需要GC扫描(不包含指针)的对象
+*Object Size*指协程一次向 Golang 内存申请的 Object 大小
 
->![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651134377320-3f71752d-65fa-4081-a255-09c387f23a65.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_70%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
+#### Page
+
+*Page*的大小是8KB，是 Golang 内存管理系统与操作系统交互衡量内存容量的基本单元
+
+#### MSpan
+
+Span 的名称改为*mspan*，与 TCMalloc 一样，mspan 包含一组连续的 Page
+
+**Size Class**在 Go 内存管理中针对 Object Size 来划分内存，Go 给内存池中固定划分了67种 Size Class，每一个 Size Class 都会存储特定大小的 Objects 并且包含特定数量的 Pages 以及 Objects，最大 Class 为 32KB
+
+此外运行时中还包含 ID 为 0 的特殊 Size Class，它能够管理大于 32KB 的特殊对象
+
+每个 Size Class **对应存在两个 Span Class**，一个用于存放需要 GC 扫描的对象(包含指针的对象)，另一个存放不需要 GC 扫描(不包含指针)的对象
+
+每个 mspan 根据相应的 Object Size 分为 n(>=1)个 Object
+
+| class | bytes/obj | bytes/span | objects | tail waste | max waste |
+|:-----:|:---------:|:----------:|:-------:|:----------:|:---------:|
+|   1   |     8     |    8192    |  1024   |     0      |  87.50%   |
+|   2   |    16     |    8192    |   512   |     0      |  43.75%   |
+|   3   |    24     |    8192    |   341   |     0      |  29.24%   |
+|   4   |    32     |    8192    |   256   |     0      |  46.88%   |
+|   5   |    48     |    8192    |   170   |     32     |  31.52%   |
+|   6   |    64     |    8192    |   128   |     0      |  23.44%   |
+|   7   |    80     |    8192    |   102   |     32     |  19.07%   |
+|   …   |     …     |     …      |    …    |     …      |     …     |
+|  67   |   32768   |   32768    |    1    |     0      |  12.50%   |
+
+```go
+type mspan struct {
+  // 链表
+	next *mspan
+	prev *mspan
+
+  // 页管理
+  startAddr uintptr  // 起始地址
+	npages    uintptr  // 页数
+	freeindex uintptr  // 扫描页中空闲对象的初始索引
+
+	allocBits  *gcBits // 标记内存的占用情况
+	gcmarkBits *gcBits // 标记内存的回收情况
+	allocCache uint64  // allocBits的补码，可以用于快速查找内存中未被使用的内存
+
+  spanclass spanClass // 决定该mspan中存储的object大小和个数
+	...
+}
+```
+`spanClass` 是一个 uint8 类型的整数，它的前 7 位存储着跨度类的 ID，最后一位表示是否包含指针
+运行时会使用 `runtime.mSpanList` 存储双向链表的头结点和尾节点并在线程缓存以及中心缓存中使用
+
+当用户程序或者线程向 mspan 申请内存时，mspan使用 `allocCache` 字段以对象为单位在管理的内存中快速查找待分配的空间
+如果能在内存中找到空闲的内存单元则直接返回，当内存中不包含空闲的内存时，上一级的组件 Mcache 会为调用 `runtime.mcache.refill` 更新内存管理单元以满足为更多对象分配内存的需求
 
 ### MCache
 
-**MCache**对应TCMalloc的ThreadCache，但MCache绑定Golang协程调度模型GPM中的Processor，协程逻辑层从MCache上获取内存不需要加锁
-MCache中对应每个Span Class存在一个mspan，每个mcache中共134个mspan，每个mspan又根据相应的Object Size分为多个object
+**MCache**对应 TCMalloc 的 ThreadCache，是 Go 中的线程缓存，Go 协程调度模型 GPM 中的每个 P 都有自己独立的一个 mcache，因此**协程逻辑层从 MCache 上获取内存不需要加锁**
+
+每一个 mcache 中对应每个 Size Class 存在两个 mspan，一个用于存放需要 GC 扫描的对象(包含指针的对象)，另一个存放不需要 GC 扫描(不包含指针)的对象
+因此每一个 mcache 都持有 68 * 2 个 mspan
+每个 mspan 又根据相应的 Object Size 分为多个 object
+这些 mspan 都存储在结构体的 `alloc` 字段中
+
+MCache 在刚刚被初始化时不包含 mspan 实例，所有 mspan 都为空的占位符 `emptymspan`，当用户程序申请内存时 MCache 从上一级组件 MHeap 中获取新的 mspan 满足内存分配的需求
 
 >![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651134640677-2a153c96-b7e8-46bc-86f3-dfaf50087329.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_84%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
+> 该图 Span Class 个数有误
 
-对于Span Class为0和1(对应Size Class为0，Object Size 为0)的规格刻度内存，MCache实际上没有分配任何内存。Golang内存管理对内存为0的数据申请特殊处理，直接返回一个固定内存地址**zerobase**
+对于 Span Class 为0和1(对应 Size Class 为0，Object Size 为0)的规格刻度内存，MCache 实际上没有分配任何内存
+Go 内存管理对内存为0的数据申请特殊处理，直接返回一个固定内存地址**zerobase**
 
->在Golang中如\[0\]int、 struct{}所需要大小均是0，这也是为什么很多开发者在通过Channel做同步时，发送一个struct{}数据，因为不会申请任何内存，能够适当节省一部分内存空间
+> 在 Go 中如\[0\]int、 struct{}所需要大小均是0，这也是为什么很多开发者在通过 Channel 做同步时，发送一个 struct{}数据，因为不会申请任何内存，能够适当节省一部分内存空间
 
 #### Tiny空间
 
-每个mcache中包含一个特殊的**Tiny空间**，其从Object Size为16B的mspan中获取一个object作为tiny对象的分配空间，只有当该object中的所有对象都需要被回收时，整片内存才可能被回收
+每个 mcache 中包含一个特殊的**Tiny 空间**，其从 Object Size 为16B 的 mspan 中获取一个 object 作为 tiny 对象的分配空间，只有当该 object 中的所有对象都需要被回收时，整片内存才可能被回收
+
+下面的这三个字段组成了微对象分配器，专门管理 16 字节以下的对象
+```go
+type mcache struct {
+	tiny             uintptr
+	tinyoffset       uintptr
+	local_tinyallocs uintptr
+}
+```
+微分配器只会用于分配非指针类型的内存，上述三个字段中 `tiny` 会指向堆中的一片内存，`tinyOffset` 是下一个空闲内存所在的偏移量，最后的 `local_tinyallocs` 会记录内存分配器中分配的对象个数
 
 ### MCentral
 
-MCache中出现Span Class中Span空缺时，会向MCentral申请对应的mspan，向MCentral申请mspan需要加锁
+MCache 中某 mspan 空缺或用尽时，会向 MCentral 申请对应的 mspan，向 MCentral 申请 mspan 需要加互斥锁
 
-MCentral这层数据管理中实际上有134个mcentral小内存管理单元，每个mcentral对应一个Span Class，每个mcentral包含两个mspan集合，分别维护空闲mspan和非空闲mspan
+MCentral 具体分为多个小 mcentral，每个 mcentral 都会管理某个 Size Class 的 mspan，它会同时持有两个 mspan 的集合，分别存储包含空闲对象和不包含空闲对象的内存管理单元
+```go
+type mcentral struct {
+	spanclass spanClass
+	partial  [2]spanSet
+	full     [2]spanSet
+}
+```
+
+Mcache 会通过 Mcentral 的 `runtime.mcentral.cacheSpan` 方法获取新的 mspan，该方法的实现比较复杂，可以将其分成以下几个部分：
+1. 调用 `runtime.mcentral.partialSwept` 从清理过的、包含空闲空间的 `spanSet` 结构中查找可以使用的内存管理单元
+2. 调用 `runtime.mcentral.partialUnswept` 从未被清理过的、有空闲对象的 `spanSet` 结构中查找可以使用的内存管理单元
+3. 调用 `runtime.mcentral.fullUnswept` 获取未被清理的、不包含空闲空间的 `spanSet` 中获取内存管理单元并通过 `runtime.mspan.sweep` 清理它的内存空间
+4. 调用 `runtime.mcentral.grow` 从堆中申请新的内存管理单元
+5. 更新 mspan 的 `allocBits` 和 `allocCache` 字段，帮助快速分配内存
+
+MCentral 中的 Span 不够时，会采用 `runtime.mcentral.grow` 扩容方法根据预先计算的 `class_to_allocnpages` 和 `class_to_size` 获取待分配的Pages以及 Size Class并调用 `runtime.mheap.alloc` 获取新的 mspan
 
 ### MHeap
 
 MCentral中的Span不够时会向MHeap申请，同样需要加锁
+
+MHeap 是内存分配的核心结构体，是堆内存的抽象，把从系统申请出的内存页组织成 mspan，并保存起来
 
 MHeap以Page为内存单元进行管理，用来详细管理每一系列Page的结构称之为一个**HeapArena**，一个HeapArena占用内存64MB，里面的内存以page方式存放，所有的HeapArena组成的集合是一个**Arenas**
 
@@ -100,22 +219,68 @@ MHeap以Page为内存单元进行管理，用来详细管理每一系列Page的�
 
 Golang将对象分为tiny对象，小对象及大对象
 
-**大量的微小对象可能会使Object Size = 8B的mspan产生许多空间浪费**。所以Golang内存管理决定将小于16B的内存申请统一归类为Tiny对象申请
+**大量的微小对象可能会使 Object Size = 8B 的 mspan 产生许多空间浪费**，所以 Golang 内存管理决定将小于16B 的内存申请统一归类为 Tiny 对象申请
 > ![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651135299397-38b04b81-3179-44e4-81ca-bb476b69f22f.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_73%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
 
-对于**16B至32KB**的内存申请，Golang采用小对象的分配流程
+对于**16B 至32KB**的内存申请，Go 采用小对象的分配流程
 
 >![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651135402859-c6404c6a-f0fd-4bb9-bbef-0c5286b0b2a4.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_100%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
 
-对于大于32KB的大对象申请直接从MHeap中分配，Proceesor直接向MHeap申请对象所需要的适当Pages
+对于大于32KB 的大对象申请直接从 MHeap 中分配，Proceesor 直接向 MHeap 申请对象所需要的适当 Pages
 
 >![](https://cdn.nlark.com/yuque/0/2022/png/26269664/1651135463380-9ee93382-7deb-48c0-ab38-519d679101e4.png?x-oss-process=image%2Fwatermark%2Ctype_d3F5LW1pY3JvaGVp%2Csize_90%2Ctext_5YiY5Li55YawQWNlbGQ%3D%2Ccolor_FFFFFF%2Cshadow_50%2Ct_80%2Cg_se%2Cx_10%2Cy_10)
 
-## Golang栈内存管理
+### 虚拟内存布局
+
+>[Go 语言内存分配器的实现原理 | Go 语言设计与实现 (draveness.me)](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/#711-%E8%AE%BE%E8%AE%A1%E5%8E%9F%E7%90%86)
+
+#### 线性内存
+
+> ![heap-before-go-1-10.png (1207×330) (draveness.me)](https://img.draveness.me/2020-10-19-16031147347484/heap-before-go-1-10.png)
+
+V1.10 以前 Go 在启动时会初始化整片虚拟内存区域，为 `spans`、`bitmap` 和 `arena` 三个区域分别预留了 512MB、16GB 以及 512GB 的内存空间
+- `spans` 区域存储了指向内存管理单元mspan的指针，每个内存单元会管理几页的内存空间，每页大小为 8KB
+- `bitmap` 用于标识 `arena` 区域中保存了对象的地址，bitmap中的每个字节都会表示堆区中的 32 字节是否空闲
+- `arena` 区域是真正的堆区，运行时会将 8KB 看做一页，这些内存页中存储了所有在堆上初始化的对象
+
+#### 稀疏内存
+
+V1.11运行时使用二维的 `runtime.heapArena` 数组管理所有的内存，数组中每个元素管理 64MB 的内存空间
+
+```go
+type heapArena struct {
+	bitmap       [heapArenaBitmapBytes]byte
+	spans        [pagesPerArena]*mspan
+	pageInUse    [pagesPerArena / 8]uint8
+	pageMarks    [pagesPerArena / 8]uint8
+	pageSpecials [pagesPerArena / 8]uint8
+	checkmarks   *checkmarksMap
+	zeroedBase   uintptr
+}
+```
+
+`heapArena` 结构体中的 `bitmap` 和 `spans` 与线性内存中的 `bitmap` 和 `spans` 作用相同
+`zeroedBase` 字段指向了该结构体管理的内存的基地址
+
+上述设计将原有的连续大内存切分成稀疏的小内存，而用于管理这些内存的元信息也被切成了小块
+
+> 不同平台和架构的二维数组大小可能完全不同，如果我们的 Go 语言服务在 Linux 的 x86-64 架构上运行，二维数组的一维大小会是 1，而二维大小是 4,194,304，因为每一个指针占用 8 字节的内存空间，所以元信息的总大小为 32MB。由于每个`heapArena`会管理 64MB 的内存，整个堆区最多可以管理 256TB 的内存，这比之前的 512GB 多好几个数量级
+
+### 地址空间
+
+所有的内存最终都是要从操作系统中申请的，所以 Go 语言的运行时构建了操作系统的内存管理抽象层，该抽象层将运行时管理的地址空间分成以下四种状态：
+|    状态    | 解释                                                                                    |
+|:----------:| --------------------------------------------------------------------------------------- |
+|   `None`   | 内存没有被保留或者映射，是地址空间的默认状态                                            |
+| `Reserved` | 运行时持有该地址空间，但是访问该内存会导致错误                                          |
+| `Prepared` | 内存被保留，一般没有对应的物理内存访问该片内存的行为是未定义的可以快速转换到 Ready 状态 |
+|  `Ready`   | 可以被安全访问                                                                          |
+
+## Go 栈内存管理
 
 > [Go 语言的栈内存和逃逸分析 | Go 语言设计与实现 (draveness.me)](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-stack-management/)
 
-Golang在栈内存管理中采用**连续栈**，其核心原理是每当程序的栈空间不足时，初始化一片更大的栈空间并将原栈中的所有值都迁移到新栈中，新的局部变量或者函数调用就有充足的内存空间。
+Go 在栈内存管理中采用**连续栈**，其核心原理是每当程序的栈空间不足时，初始化一片更大的栈空间并将原栈中的所有值都迁移到新栈中，新的局部变量或者函数调用就有充足的内存空间
 
 **可以认为 Go 语言的栈内存都是分配在堆上的**
 
@@ -141,41 +306,9 @@ Golang在栈内存管理中采用**连续栈**，其核心原理是每当程序�
 
 如果要触发栈的缩容，新栈的大小会是原始栈的一半，不过如果新栈的大小低于程序的最低限制 2KB，那么缩容的过程就会停止
 
-## 虚拟内存布局
-
->[Go 语言内存分配器的实现原理 | Go 语言设计与实现 (draveness.me)](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/#711-%E8%AE%BE%E8%AE%A1%E5%8E%9F%E7%90%86)
-
-### 线性内存
-
-V1.10在启动时会初始化整片虚拟内存区域，为 `spans`、`bitmap` 和 `arena` 三个区域分别预留了 512MB、16GB 以及 512GB 的内存空间
-- `spans` 区域存储了指向内存管理单元mspan的指针，每个内存单元会管理几页的内存空间，每页大小为 8KB；
-- `bitmap` 用于标识 `arena` 区域中保存了对象的地址，bitmap中的每个字节都会表示堆区中的 32 字节是否空闲；
-- `arena` 区域是真正的堆区，运行时会将 8KB 看做一页，这些内存页中存储了所有在堆上初始化的对象；
-
-### 稀疏内存
-
-V1.11运行时使用二维的 `heapArena`数组管理所有的内存，每个单元都会管理 64MB 的内存空间
-
-```go
-type heapArena struct {
-	bitmap       [heapArenaBitmapBytes]byte
-	spans        [pagesPerArena]*mspan
-	pageInUse    [pagesPerArena / 8]uint8
-	pageMarks    [pagesPerArena / 8]uint8
-	pageSpecials [pagesPerArena / 8]uint8
-	checkmarks   *checkmarksMap
-	zeroedBase   uintptr
-}
-```
-
-该结构体中的 `bitmap` 和 `spans` 与线性内存中的 `bitmap` 和 `spans` 区域一一对应，`zeroedBase` 字段指向了该结构体管理的内存的基地址。上述设计将原有的连续大内存切分成稀疏的小内存，而用于管理这些内存的元信息也被切成了小块
-
-> 不同平台和架构的二维数组大小可能完全不同，如果我们的 Go 语言服务在 Linux 的 x86-64 架构上运行，二维数组的一维大小会是 1，而二维大小是 4,194,304，因为每一个指针占用 8 字节的内存空间，所以元信息的总大小为 32MB。由于每个`heapArena`会管理 64MB 的内存，整个堆区最多可以管理 256TB 的内存，这比之前的 512GB 多好几个数量级
-
 ## 逃逸分析
 
 > [技术干货 | 理解 Go 内存分配 - 腾讯云开发者社区-腾讯云 (tencent.com)](https://cloud.tencent.com/developer/article/1861429)
-
 
 逃逸分析就是指程序在编译阶段根据代码中的数据流，对代码中**变量在栈上还是堆上进行分配进行静态分析**的方法
 
@@ -184,8 +317,8 @@ Go 语言编译器**当发现变量的作用域没有跑出函数范围，就可
 如果函数外部存在引用，则必定放到堆中
 
 Go 语言的逃逸分析遵循以下两个不变性：
-1. 指向栈对象的指针不能存在于堆中
-2. 指向栈对象的指针不能在栈对象回收后存活
+1. **指向栈对象的指针不能存在于堆中**
+2. **指向栈对象的指针不能在栈对象回收后存活**
 
 函数默认在栈上运行、声明临时变量并分配内存，堆上动态分配内存比栈上静态分配内存开销大，应尽量分配内存至栈(减少逃逸)以减轻垃圾回收的压力
 
@@ -199,4 +332,3 @@ Go 语言的逃逸分析遵循以下两个不变性：
 查看程序逃逸情况 `go build -gcflag '-m' main.go`
 
 ## 内存对齐
-
