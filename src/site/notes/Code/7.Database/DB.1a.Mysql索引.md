@@ -177,6 +177,11 @@ CREATE INDEX index_a_b_c ON product(a, b, c); -- 联合索引
 
 ### 索引设为 NOT NULL
 
+
+## 索引更新
+
+
+
 ## 查询选择索引
 
 优化器计算每条SQL语句的成本，基于成本选择索引，优先使用成本最低的索引
