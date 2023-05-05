@@ -203,9 +203,9 @@ InnoDB 使用 **WAL (Write-Ahead Logging)技术**，通过先写 [[Code/7.Databa
 
 主从缓存同步分为 snapshot、transmit、recover 三个步骤：
 
-snapshot将主库buffer pool状态逻辑导出到主库本地的ib_bp_info文件中，具体过程如下（buf_snapshot）：
+Snapshot 将主库 buffer pool 状态逻辑导出到主库本地的 ib_bp_info 文件中，具体过程如下(buf_snapshot)：
 1. 逐一扫描每个所有buffer pool instance的LRU list和CLOCK list中的每个页面，将页面的space_id和page_no汇总到以space_id为key，unordered_set为value的lru_maps中。扫描结束后，所有页面按照space_id进行了初步归类
-2. 逐一处理每个 space_id 下的页面。通过页面的前后节点指针，将相邻的页面串联成页面链表，并用最左页面、最左页面的第一条用户记录、最右页面、最右页面最后一条用户记录代表该页面链表，存入 multi_ranges 中（link_page）
+2. 逐一处理每个 space_id 下的页面，通过页面的前后节点指针，将相邻的页面串联成页面链表，并用最左页面、最左页面的第一条用户记录、最右页面、最右页面最后一条用户记录代表该页面链表，存入 multi_ranges 中（link_page）
 3. 将 multi_ranges 中所有 record range 按照一定格式落盘到本地 ib_bp_info 文件中。
 
 针对如何传输ib_bp_info文件，有很多备选方案：采用scp来传输文件误操作的可能性比较高，并且经常修改传输脚本；采用binlog传输会加重binlog的负担，加大主从延迟的风险，方案复杂，风险大；采用内建表的方式同步文件又担心引入兼容性的问题。主从缓存通过最终选择了transmit方案，即在slave新创建一种与IO线程相似，需要与master建立tcp连接的transmit线程（handle_slave_transmit），该线程负责向master发送ib_bp_info文件传输申请，并负责接收ib_bp_info文件。transmit方案不侵入主从复制的原有逻辑，对于不支持transmit的主库，也仅仅是无法从主库获取ib_bp_info文件，不存在兼容问题。
@@ -218,7 +218,7 @@ recover 将 ib_bp_info 文件中代表的数据加载到从库 buffer pool 中�
 
 ## Change buffer
 
-一条普通的DML可能因为需要修改多个二级索引，而带来大量随机IO
+一条普通的 DML 语句可能因为需要修改多个二级索引，而带来大量随机 IO
 
 Innodb 存储引擎引入 change buffer 解决二级索引随机 IO 问题 
 
