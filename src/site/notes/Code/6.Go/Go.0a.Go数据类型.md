@@ -409,7 +409,7 @@ delete(m1, a)
 4. 若无匹配且 `overflow` 指针不为空，去溢出桶内继续匹配
 5. 未找到 key 时会返回一个 key 相应类型的零值
 
-> ![2.png (1766×2248) (golang.design)](https://golang.design/go-questions/map/assets/2.png)
+> ![2.png (1766×2248) (golang.design)|600](https://golang.design/go-questions/map/assets/2.png)
 
 对于查找，编译器分析代码后，将是否返回 bool 变量的两种语法对应到底层两个不同的函数 `mapaccess1` 和 `mapaccess2`
 
@@ -504,7 +504,7 @@ bucketloop:
 1. 首先函数根据传入的键获取 hash 值，进而拿到对应的哈希和桶
 2. 然后通过遍历比较桶中存储的 `tophash` 和键的哈希，如果找到了相同结果就会返回目标位置的地址
 3. 如果当前键值对在哈希中不存在，哈希会为新键值对规划存储的内存地址
-4. 如果当前桶已经满了，会调用 `runtime.hmap.newoverflow` 创建新桶或者使用 `runtime.hmap` 预先创建好的桶来保存数据，新创建的桶不仅会被追加到已有桶的末尾，还会增加哈希表的 `noverflow` 计数器
+4. 如果当前桶已经满了，会调用 `runtime.hmap.newoverflow` 创建新桶或者使用 `runtime.hmap` 预先创建好的桶来保存数据，新创建的桶不仅会被追加到已有桶的末尾
 
 当形如 `hash[k]` 的表达式出现在赋值符号左侧时，该表达式会在编译期间转换成 `runtime.mapassign` 函数的调用
 
@@ -901,8 +901,6 @@ func makechan(t *chantype, size int) *hchan {
 - *阻塞发送*：当前 channel 的 recvq 为空(没有正在阻塞等待接收数据的 goroutine) 且缓冲区已满时，发送的 goroutine 被阻塞，首先获取 sudog ，将该 goroutine 绑定到 sudog 上，加入到当前 channel 的 sendq 队列中，然后调用 gopark 方法挂起当前 goroutine，等待被唤醒
 
 #### 读取
-
-- Channel
 
 - 从一个空 channel 接收数据，goroutine 会被挂起并阻塞等待
 - 当前 channel 的 sendq 有 goroutine 等待发送数据时
