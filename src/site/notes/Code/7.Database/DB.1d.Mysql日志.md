@@ -52,7 +52,6 @@ redo log 是物理日志，记录数据页的修改，比如**对 XXX 表空间�
 
 InnoDB 使用内存中的 Buffer pool 缓冲池提高数据库的读写性能，但可能丢失未写入磁盘的信息，redo log 保证了 Buffer pool 的持久性
 
-
 ### 刷盘
 
 **redo log 也并非直接写入磁盘**，而是首先被写入缓存*redo log buffer*，之后再写入磁盘
@@ -70,9 +69,11 @@ InnoDB使用参数`innodb_flush_log_at_trx_commit`控制redo log的刷盘策略�
 > ![innodb_flush_log_at_trx_commit2.drawio.png (1061×863) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/mysql/how_update/innodb_flush_log_at_trx_commit2.drawio.png?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
 
 **溢出控制**：
-默认情况下 InnoDb 存在 redo log group，内含两个 redo log 文件，以**循环写**方式工作，相当于一个环形，InnoDB 用 write pos 表示 redo log 当前记录写到的位置，用 check point 表示当前要擦除的位置
+默认情况下 InnoDb 存在 redo log group，内含两个 redo log 文件，以**循环写**方式工作，相当于一个环形
+
+InnoDB 用 write pos 表示 redo log 当前记录写到的位置，用 check point 表示当前要擦除的位置
 当 write pos 追上 check point 时代表 redo log buffer 已满，此时 MySQL 被阻塞，不能再执行新的更新操作
-Mysql 将 Buffer Pool 中的脏页刷新到磁盘中，然后标记 redo log 中可擦除的记录，接着对旧的 redo log 记录进行擦除
+之后 Mysql 将 Buffer Pool 中的脏页刷新到磁盘中，然后标记 redo log 中可擦除的记录，接着对旧的 redo log 记录进行擦除
 等擦除完旧记录腾出了空间，checkpoint 往前移动，MySQL 恢复正常运行，继续执行新的更新操作
 
 > ![checkpoint.png (1362×906) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/mysql/how_update/checkpoint.png)
@@ -83,7 +84,7 @@ Mysql 将 Buffer Pool 中的脏页刷新到磁盘中，然后标记 redo log 中
 
 MySQL 在完成一条更新操作后，Server 层会生成一条 binlog，等事务提交时会将该事务执行过程中产生的所有 binlog 统一写入binlog 文件
 
-binlog 文件是**以二进制形式**记录了所有数据库表**结构变更和表数据修改**的日志，**不会记录查询类的操作**，比如 SELECT 和 SHOW 操作
+binlog 文件是以**二进制形式**记录了所有数据库表**结构变更和表数据修改**的日志，**不会记录查询类的操作**，比如 SELECT 和 SHOW 操作
 
 binlog 有 3 种格式类型：
 - *STATEMENT*：每一条修改数据的 SQL 都会被记录到 binlog 中(逻辑日志)，但存在动态函数主从库执行结果不一致的问题
@@ -115,7 +116,7 @@ Mysql中的主从复制一般是**异步**的，通常分为三个阶段：
 
 主从复制类型：
 - **同步复制**：MySQL 主库提交事务的线程要等待所有从库的复制成功响应，才返回客户端结果。这种方式在实际项目中，基本上没法用，原因有两个：一是性能很差，因为要复制到所有节点才返回响应；二是可用性也很差，主库和所有从库任何一个数据库出问题，都会影响业务
-- **异步复制**(默认模型)：MySQL 主库提交事务的线程并不会等待 binlog 同步到各从库，就返回客户端结果。这种模式一旦主库宕机，数据就会发生丢失
+- **异步复制**(默认模型)：MySQL 主库提交事务的线程并不会等待 binlog 同步到各从库，就返回客户端结果，这种模式一旦主库宕机，数据就会发生丢失
 - **半同步复制**：MySQL 5.7 版本之后增加的一种复制方式，介于两者之间，事务线程不用等待所有的从库复制成功响应，只要一部分复制成功响应回来就行，比如一主二从的集群，只要数据成功复制到任意一个从库上，主库的事务线程就可以返回给客户端。半同步复制的方式，兼顾了异步复制和同步复制的优点，**即使出现主库宕机，至少还有一个从库有最新的数据，不存在数据丢失的风险**
 
 ## 两阶段提交
@@ -142,7 +143,7 @@ MySQL 使用*两阶段提交*来避免非正常情况下 redo log 和 binlog 逻
 
 ### 组提交
 
-MySQL 引入了 binlog *组提交*(group commit)机制，当有多个事务提交的时候，会将多个 binlog 刷盘操作合并成一个，从而减少磁盘 I/O 的次数
+MySQL 引入了 *binlog 组提交*(group commit)机制，当有多个事务提交的时候，会将多个 binlog 刷盘操作合并成一个，从而减少磁盘 I/O 的次数
 
 引入了组提交机制后，prepare 阶段不变，只针对 commit 阶段，将 commit 阶段拆分为三个阶段：
 - *flush* 阶段：多个事务按进入的顺序将 binlog 从 cache 写入文件(不刷盘)
@@ -157,7 +158,6 @@ MySQL 引入了 binlog *组提交*(group commit)机制，当有多个事务提�
 V5.6 中每个事务各自执行 prepare 阶段，也就是各自将 redo log 刷盘，这样就没办法对 redo log 进行组提交
 V5.7 版本后，在 prepare 阶段不再让事务各自执行 redo log 刷盘操作，而是推迟到组提交的 flush 阶段，也就是说 prepare 阶段融合在了 flush 阶段，将 redo log 的刷盘延迟到了 flush 阶段之中，sync 阶段之前。通过延迟写 redo log 的方式，为 redolog 做了一次组写入，这样 binlog 和 redo log 都进行了优化
 
-
 ## 差异
 
 undo log 和 redo log 这两个日志都是 Innodb 存储引擎生成的，binlog由Mysql的Sever层生成
@@ -166,7 +166,7 @@ redo log VS binlog：
 - 生成对象不同：redo log 由InnoDB实现，binlog由Mysql的Sever层实现
 - 内容不同：redo log 是物理日志，内容基于数据页，只记录未被刷入磁盘的buffer pool数据日志；binlog为二进制，可以基于sql语句，数据本身或二者混合，保存全量日志
 - 写入方式不同：binlog为追加写，在事务提交时写入；redo log为循环写，有多种提交时机
-- 作用不同：redo log 用于崩溃恢复，binlog用于备份恢复，主从复制
+- 作用不同：redo log 用于崩溃恢复，binlog 用于备份恢复和主从复制
 
 redo log VS undo log：
 - redo log 记录了此次事务*完成后*的数据状态，记录的是更新**之后**的值
