@@ -177,11 +177,6 @@ CREATE INDEX index_a_b_c ON product(a, b, c); -- 联合索引
 
 ### 索引设为 NOT NULL
 
-
-## 索引更新
-
-
-
 ## 查询选择索引
 
 优化器计算每条SQL语句的成本，基于成本选择索引，优先使用成本最低的索引
@@ -194,7 +189,7 @@ CREATE INDEX index_a_b_c ON product(a, b, c); -- 联合索引
 
 > [count(\*) 和 count(1) 有什么区别？哪个性能最好？ | 小林coding (xiaolincoding.com)](https://xiaolincoding.com/mysql/index/count.html#count-%E4%B8%BB%E9%94%AE%E5%AD%97%E6%AE%B5-%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B%E6%98%AF%E6%80%8E%E6%A0%B7%E7%9A%84)
 
-`COUNT({parameter}) ` 统计符合查询条件的行记录中，`{parameter}` 不为 NULL 的行记录的个数
+`COUNT({parameter})` 统计符合查询条件的行记录中，`{parameter}` 不为 NULL 的行记录的个数
 COUNT(1)统计表中的记录数
 COUNT(\*) 执行时 Mysql 将 `*` 参数转化为0处理
 
