@@ -492,7 +492,7 @@ TCP仅启动单个与发送窗口尾部报文段(分组)关联的定时器，超
 TCP 采用*超时/重传机制*来处理报文段的丢失问题，在发送数据时设定定时器，指定时间内未收到对方的 ACK 报文则重传
 
 超时重传时间RTO根据往返延时(RTT)动态确定，应该略大于报文往返 RTT 的值
-> ![9.jpg (1158×888) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/9.jpg?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
+> ![9.jpg (1158×888) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/9.jpg?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
 
 推荐的初始 RTO 值为1秒，在第一次收到确认报文前的超时都将使 RTO 值成倍增加，以保证接收到确认报文段并更新
 在 Linux 下，**α = 0.125，β = 0.25， μ = 1，∂ = 4**
@@ -523,7 +523,7 @@ TCP 采用*超时/重传机制*来处理报文段的丢失问题，在发送数�
 通常窗口大小由接收方的窗口大小决定，依靠 TCP 头部*接收窗口*字段交流控制
 
 >[!Note] 发送方滑动窗口 swnd
-> ![19.jpg (1428×513) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/19.jpg?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
+> ![19.jpg (1428×513) (xiaolincoding.com)|825](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/19.jpg?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
 > `SND.WND`：表示发送窗口的大小(由接收方指定的)
 > `SND.UNA` (Send Unacknowledged)：一个绝对指针，指向已发送但未收到确认的第一个字节的序列号，也就是 #2 的第一个字节
 > `SND.NXT`：一个绝对指针，指向未发送但可发送范围的第一个字节的序列号，也就是 #3 的第一个字节
@@ -531,7 +531,7 @@ TCP 采用*超时/重传机制*来处理报文段的丢失问题，在发送数�
 > **可用窗口大小 = SND.WND -（SND.NXT - SND.UNA）**
 
 >[!Note] 接收方滑动窗口 rwnd
->  ![20.jpg (1429×498) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/20.jpg)
+>  ![20.jpg (1429×498) (xiaolincoding.com)|825](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/20.jpg)
 > `RCV.WND`：表示接收窗口的大小，会被通告给发送方
 > `RCV.NXT`：一个绝对指针，指向期望从发送方发送来的下一个数据字节的序列号，也就是 #3 的第一个字节
 > 指向 #4 的第一个字节是个相对指针，值为 RCV.NXT + RCV.WND
