@@ -95,6 +95,8 @@ $<div class="markdown-embed-title">
 
 [MySQL 使用 like “%x“，索引一定会失效吗？ | 小林coding (xiaolincoding.com)](https://xiaolincoding.com/mysql/index/index_issue.html)
 
+可以通过 [[Code/7.Database/DB.1b.Mysql语句执行过程#EXPLAIN\|EXPLAIN]] 语句查看查询结果
+
 ### Count
 
 > [count(\*) 和 count(1) 有什么区别？哪个性能最好？ | 小林coding (xiaolincoding.com)](https://xiaolincoding.com/mysql/index/count.html#count-%E4%B8%BB%E9%94%AE%E5%AD%97%E6%AE%B5-%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B%E6%98%AF%E6%80%8E%E6%A0%B7%E7%9A%84)
@@ -112,7 +114,6 @@ COUNT(字段)会采用全表扫描的方式来统计，效率极差，需要统�
 
 InnoDB 存储引擎支持事务并发，所以无法像 MyISAM 一样，维护一个 row_count 变量以 O(1)时间复杂度取得 count 值
 
-
 </div></div>
 
 
@@ -123,33 +124,54 @@ InnoDB 存储引擎支持事务并发，所以无法像 MyISAM 一样，维护�
 通过在查询语句前加入 `EXPLAIN` 可输出语句的执行计划
 
 结果参数包括：
-```mysql
-| id | select_type | table | partitions | type | possible_keys | key  | key_len | ref  | rows   | filtered | Extra |
-```
+|       列名        | 描述                                                      |
+|:-----------------:|:--------------------------------------------------------- |
+|        id         | 在一个大的查询语句中每个 SELECT 关键字都对应一个唯一的 id |
+|    select_type    | SELECT 关键字对应的那个查询的类型                         |
+|       table       | 表名                                                      |
+|    partitions     | 匹配的分区信息                                            |
+|     **type**      | 针对单表的访问方法                                        |
+| **possible_keys** | 可能用到的索引                                            |
+|      **key**      | 实际上使用的索引                                          |
+|      **key_len**      | 实际使用到的索引长度                                      |
+|        ref        | 当使用索引列等值查询时，与索引列进行等值匹配的对象信息    |
+|     **rows**      | 预估的需要读取的记录条数                                  |
+|     filtered      | 某个表经过搜索条件过滤后剩余记录条数的百分比              |
+|     **Extra**     | 一些额外的信息                                            |
+
+EXPLAIN 语句输出的每条记录都对应着某个单表的访问方法，该条记录的 table 列代表着该表的表名
 
 其中重点结果参数：
-- `possible_keys` - 可能的索引选择，在查询中可使用 FORCE INDEX、USE INDEX 或者 IGNORE INDEX 强制 MySQL 使用或忽视 possible_keys 列中的索引
-- `key` - 实际选择的索引
-  - `PRIMARY` - 进行了主键索引
-  - `NULL` - 进行了全表扫描
-- `key_len` - 选择的索引的长度
-- `rows`  - mysql 解析器预估的扫描数据行数，通常小于实际值
-- `type`  - 数据扫描类型(类型顺序从性能最好到最差排列)
-  - `system` - 表仅有一行，是 const 类型的一个特例
-  - `const` - 结果只有一条的主键/唯一索引扫描，单表中使用常量匹配索引
-  - `eq_ref` - 唯一索引扫描，通常用于多表联查中，其中使用主键或唯一索引作为查询的关联条件
-  - `ref` - 非唯一索引扫描，使用非唯一性索引或者索引的前缀来执行查找，联接不能基于关键字选择单个行
+
+*type* 代表执行查询时的数据扫描类型(类型顺序从性能最好到最差排列)
+  - `system` - 表中只有一条数据，是 const 类型的一个特例
+  - `const` - 根据主键或者唯一二级索引列与常数进行等值匹配，结果只有一条
+  - `eq_ref` - 唯一索引扫描，通常用于多表联合的查询中，其中使用主键或唯一索引作为查询的关联条件
+  - `ref` - 非唯一索引扫描，使用普通的二级索引或者索引的前缀来执行查找，或者联接不能基于关键字选择单个行的时候
   - `range` - 索引范围扫描，只检索给定范围的行记录
   - `index` - 全索引扫描，仅遍历索引树
   - `ALL` - 全表扫描
+
+*possible_keys* 代表可能的索引选择，可能使用的索引越多，查询优化器计算查询成本时就得花费更长时间，在查询中可使用 `FORCE INDEX`、`USE INDEX` 或者 `IGNORE INDEX` 强制使用或忽视 possible_keys 列中的索引
+`key` 则代表实际选择的索引，在普通字段名外包含两种特殊值：
+  - `PRIMARY` - 进行了主键索引
+  - `NULL` - 进行了全表扫描
+
+*key_len* 表示当优化器决定使用某个索引执行查询时，该索引记录的最大长度，如果该索引列可以存储 NULL 值，则 key_len 比不可存储时多1个字节
+
+*rows* 为解析器预估的扫描数据行数，通常小于实际值
+
 - `Extra`
   - `Using filesort` ：当查询语句中包含排序 order by 操作且无法利用索引直接完成排序操作时，不得不选择相应的排序算法甚至通过文件排序，效率低
   - `Using temporary`：使用了临时表保存中间结果，MySQL 在对查询结果排序时使用临时表，常见于排序 order by 和分组查询 group by，效率低
   - `Using index`：使用了覆盖索引，避免了回表操作，效率高
-  - `Using where`：存储引擎搜到记录后进行了后过滤
+  - `Using where`：存储引擎搜到记录后根据 WHERE 条件进行了进一步过滤
   - `Using join buffer`：在获取连接条件时没有用到索引，并且需要连接缓冲区来存储中间结果
   - `Using index condition`： 使用了索引下推
-  - `Impossible where`： 表示 where 条件导致没有返回的行
+  - `Impossible where`： 查询语句的 WHERE 子句永远为 FALSE
+  - `No tables used`：查询语句没有 FROM 子句
+
+> 在连接查询执行过程中，当被驱动表不能有效的利用索引加快访问速度， MySQL 一般为其分配一块名为 join buffer 的内存块来加快查询速度
 
 ### 执行器
 
