@@ -27,7 +27,7 @@ Undo log 记录 sql 执行相关信息，每当 InnoDB 引擎对一条记录进�
 ### 作用
 
 undo log 两大作用：
-- **实现事务回滚，保障事务的原子性**。事务处理过程中，如果出现了错误或者用户执 行了 ROLLBACK 语句，MySQL 可以利用 undo log 中的历史数据将数据恢复到事务开始之前的状态。
+- **实现事务回滚，保障事务的原子性**。事务处理过程中，如果出现了错误或者用户执行了 ROLLBACK 语句，MySQL 可以利用 undo log 中的历史数据将数据恢复到事务开始之前的状态。
 - **实现 MVCC(多版本并发控制)关键因素之一**。MVCC 是通过 ReadView + undo log 实现的。Undo log 为每条行记录保存多份历史数据，MySQL 在执行快照读(普通 select 语句)的时候，会根据事务的 Read View 里的信息，顺着 undo log 的版本链找到满足其可见性的记录
 
 ### 刷盘
@@ -36,7 +36,7 @@ Undo log 和数据页一样，都通过 redo log 保证持久化，buffer pool �
 
 Undo log的删除是异步的，在它的使命结束之后，会由 Purge 线程删除
 
-Purge 线程判断 Undo log 中的 trx_no 属性的值小于数据库中当前最早创建的 [[Code/7.Database/DB.1.Mysql学习#^readview\|ReadView]] 的 m_low_limit_no 属性的值，该 Undo 日志就可以删除
+Purge 线程判断 Undo log 中的 trx_no 属性的值小于数据库中当前最早创建的 [[Code/7.Database/DB.1.Mysql学习#^readview\|ReadView]] 的 `m_low_limit_no` 属性的值，该 Undo 日志就可以删除
 
 ## redo log 重做日志
 
@@ -99,7 +99,7 @@ binlog 有 3 种格式类型：
 
 Mysql中每个线程都有binlog cache，通过参数`binlog_cache_size`控制大小，通过参数`sync_binlog`控制刷盘频率
 - Sync_binlog = 0(default)：每次提交事务只 write 不 fsync，由操作系统决定刷盘时机
-- sync_binlog = N：每次提交事务write，提交N个事务刷盘一次
+- Sync_binlog = N：每次提交事务write，提交N个事务刷盘一次
 
 ### 主从复制
 
