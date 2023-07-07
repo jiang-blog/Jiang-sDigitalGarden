@@ -185,6 +185,8 @@ CREATE INDEX index_a_b_c ON product(a, b, c); -- 联合索引
 
 [MySQL 使用 like “%x“，索引一定会失效吗？ | 小林coding (xiaolincoding.com)](https://xiaolincoding.com/mysql/index/index_issue.html)
 
+可以通过 [[Code/7.Database/DB.1b.Mysql语句执行过程#EXPLAIN\|EXPLAIN]] 语句查看查询结果
+
 ### Count
 
 > [count(\*) 和 count(1) 有什么区别？哪个性能最好？ | 小林coding (xiaolincoding.com)](https://xiaolincoding.com/mysql/index/count.html#count-%E4%B8%BB%E9%94%AE%E5%AD%97%E6%AE%B5-%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B%E6%98%AF%E6%80%8E%E6%A0%B7%E7%9A%84)
