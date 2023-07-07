@@ -128,11 +128,17 @@ io-threads-do-reads yes
 > ![2016012682-44f6eb72869ece9c_fix732 (732×473) (segmentfault.com)](https://segmentfault.com/img/remote/1460000039223706)
 
 与单线程模型的差异:
-- `initServer()`中调用`initThreadedIO`来初始化多线程
-- `readQueryFromClient`不读取客户端请求命令，仅调用`postponeClientRead`将client加入到`clients_pending_read`任务队列中去，主线程之后再分配 I/O 线程去读取客户端请求命令
-- 在`beforeSleep`中执行`handleClientsWithPendingWritesUsingThreads`利用 Round-Robin 轮询负载均衡策略，把`clients_pending_read`队列中的连接均匀地分配给 I/O 线程各自的本地 FIFO 任务队列和主线程自己，I/O 线程通过 socket 读取客户端的请求命令，存入 `client->querybuf` 并解析第一个命令，**但不执行命令**，主线程忙轮询，等待所有 I/O 线程完成读取任务
+- `initServer()` 中调用 `initThreadedIO` 来初始化多线程 
+- `readQueryFromClient` 不读取客户端请求命令，仅调用 `postponeClientRead` 将 client 加入到 `clients_pending_read` 任务队列中去，主线程之后再分配 I/O 线程去读取客户端请求命令
+- 在 `beforeSleep` 中执行 `handleClientsWithPendingWritesUsingThreads`，利用 Round-Robin 轮询负载均衡策略，把 `clients_pending_read` 队列中的连接均匀地分配给 I/O 线程各自的本地 FIFO 任务队列和主线程自己，I/O 线程通过 socket 读取客户端的请求命令，存入 `client->querybuf` 并解析第一个命令，**但不执行命令**，主线程忙轮询，等待所有 I/O 线程完成读取任务
 - 主线程和所有 I/O 线程都完成了读取任务，主线程结束忙轮询，遍历 `clients_pending_read` 队列，**执行所有客户端连接的请求命令**，将响应数据写入到对应 `client` 的写出缓冲区，最后把 `client` 添加进一个 LIFO 队列 `clients_pending_write`
 - 在`beforeSleep`中执行`handleClientsWithPendingWritesUsingThreads`分配`clients_pending_write` 队列，多线程向客户端发送回包
+
+redis 6.0 多线程处理读请求的过程：
+- 主线程接受客户端并创建连接，注册读事件，读事件就绪时，主线程将读事件放到一个队列中（clients_pending_read），这个队列的顺序，代表收到客户端请求的顺序，所以意味着 redis 也要按这个队列顺序执行命令。
+- 主线程利用RR策略，将读事件分配给多个I/O线程（包括主线程自己负责读取socket数据，解析命令，并不会执行命令），然后主线程开始忙等待（等待I/O线程读取完成）
+- 主线程忙等待结束，主线程遍历clients_pending_read，按顺序执行命令。
+
 
 ## 过期删除&内存淘汰
 
@@ -256,7 +262,9 @@ Redis提供两种持久化方法:
 - *RDB*(Redis Database)，记录Redis某个时刻的全部数据，本质是数据快照，直接保存二进制数据到磁盘，后续通过加载RDB文件恢复数据
 - *AOF*(Append Only File)，记录**执行的每条写操作命令**，重启之后通过重放命令来恢复数据，本质是记录操作日志，后续通过日志重放恢复数据
 
-*体积方面*：相同数据量下，RDB体积更小，因为RDB记录的是二进制紧凑型数据
+### RDB VS AOF
+
+*体积方面*：相同数据量下，RDB 体积更小，因为 RDB 记录的是二进制紧凑型数据
 *恢复速度*：RDB是数据快照，可以直接加载，而AOF文件恢复，相当于重放情况，RDB更快
 *数据完整性*：AOF记录了每条日志，RDB间隔一段时间记录一次，用AOF恢复数据通常会更为完整
 
@@ -284,10 +292,7 @@ Redis 中 RDB 的*触发方式*有四种：
 - 主动执行BGSAVE命令触发
 - 主动执行SAVE命令触发 - 不fork子进程而由主进程进行RDB，会阻塞主进程
 
-Redis 通过 `fork()` 创建一个子进程来执行BGSAVE，配合*写时复制*技术，相当于异步执行，和主进程互不干扰，将对执行流程的影响降到最低
-
->[!note] 写时复制
->父子进程通过页表的复制共享一片物理内存，当父进程或者子进程向这个内存发起写操作时，CPU 就会触发**写保护中断**，然后操作系统会在「写保护中断处理函数」里进行**相应物理内存的复制**，并重新设置其内存映射关系，将父子进程的内存读写权限设置为**可读写**，最后才会对复制出的内存进行写操作，这个过程被称为**写时复制(_Copy On Write_)**。
+Redis 通过 `fork()` 创建一个子进程来执行 BGSAVE，配合[[Code/4.OS/OS.0b.内存管理#写时复制\|写时复制技术]]，相当于异步执行，和主进程互不干扰，将对执行流程的影响降到最低
 
 根据写时复制的性质，Redis 主进程在 RDB 期间进行的新的写操作**不被记录在快照中**，且会**导致被修改数据的物理内存的复制**
 因此主进程在 RDB 期间对大 key 的写操作会导致内核花费较长时间复制物理内存，阻塞主进程
@@ -324,15 +329,16 @@ appendfsync everysec # 每秒将缓冲区刷入磁盘
 
 #### AOF 重写
 
-AOF 日志文件大小随写操作命令增加而增大，Redis 可以在 AOF 日志体积变得过大时，自动地在后台创建一个**子进程** *bgrewriteaof* 重写 AOF，合并针对相同 Key 的操作，**生成一个压缩后的 AOF 日志文件替代原文件**
+AOF 日志文件大小随写操作命令增加而增大，Redis 可以在 AOF 日志体积变得过大时，自动地在后台创建一个**子进程** *bgrewriteaof* 重写 AOF
+重写机制合并针对相同 Key 的操作，根据键值对当前的最新状态用一条命令记录键值对，**生成一个压缩后的 AOF 日志文件替代原文件**
 
 >子进程进行 AOF 重写期间，主进程可以继续处理命令请求，从而避免阻塞主进程
 >子进程带有主进程的数据副本，且不像线程需要通过加锁来保证共享数据的安全，导致降低性能
 
-子进程通过操作系统复制的**页表**和父进程共享物理内存数据
+子进程通过[[Code/4.OS/OS.0b.内存管理#写时复制\|写时复制技术]]和父进程共享物理内存数据
 
 重写过程中发生的新的写操作记录同时记录在 *AOF 缓冲区*和 *AOF 重写缓冲区*
-新 AOF 文件创建完毕后 Redis 将重写缓冲区内容追加到新的 AOF 文件，再用新 AOF 文件替换原来的 AOF 文件
+新 AOF 文件创建完毕后 Redis 主进程将重写缓冲区内容追加到新的 AOF 文件，再用新 AOF 文件替换原来的 AOF 文件
 
 重写缓冲区避免了父子进程写入同一文件而竞争文件系统锁进而对 Redis 主线程的性能造成影响
 
@@ -419,7 +425,14 @@ EXEC
 
 V2.6 后 Redis 通过内嵌支持 Lua 环境，通过*EVAL*命令原子性执行脚本
 
+
 优点：
 - 可以编写 `if else` 逻辑
 - 事务中间失败中断后续执行
 - 不需要 Watch 保证执行状态未改变
+
+**原子性保证**：
+Redis 使用相同的 Lua 解释器来运行所有的命令
+Redis 保证脚本以原子方式执行：在执行脚本时，不会执行其他脚本或 Redis 命令，从所有其他客户端的角度来看，脚本的效果要么仍然不可见，要么已经完成
+>[!attention]
+>如果Lua执行出错，可能就会出现一部分命令执行，一部分没有执行
