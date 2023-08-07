@@ -5,8 +5,8 @@
 
 # 操作系统
 
-> 学习蒋炎岩《[操作系统](https://www.bilibili.com/video/BV12L4y1379V/?spm_id_from=333.788&vd_source=ea19bebc1add0fca9fa4aa2f334eb127)》课程的学习笔记
-> 同时参考课程教科书《Operating Systems:Three Easy Pieces》的中文版 -- 《操作系统导论》
+> ~~学习蒋炎岩《[操作系统](https://www.bilibili.com/video/BV12L4y1379V/?spm_id_from=333.788&vd_source=ea19bebc1add0fca9fa4aa2f334eb127)》课程的学习笔记
+> 同时参考课程教科书《Operating Systems:Three Easy Pieces》的中文版 -- 《操作系统导论》~~
 
 计算机的本质是状态机，一部分存储当前状态，一部分用于在每个时钟周期内计算并转移至下一状态。
 程序也可以看成一个状态机，并且是计算机状态机的一部分，程序在计算机上的运行即为计算机从某一初始状态开始计算下一状态并转移(执行指令)。
@@ -17,7 +17,7 @@
 
 **内核是应用连接硬件设备的桥梁**，应用程序只需关心与内核交互，不用关心硬件的细节
 
-> ![Kernel_Layout.png (1280×1011) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E5%86%85%E6%A0%B8/Kernel_Layout.png)
+> ![Kernel_Layout.png (1280×1011) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E5%86%85%E6%A0%B8/Kernel_Layout.png)
 
 现代操作系统的内核一般会提供 4 个基本能力：
 - 任务调度，决定使用 CPU 的进程/线程
@@ -56,7 +56,7 @@
 
 ### Windows
 
-> ![windowNT.png (1024×1313) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E5%86%85%E6%A0%B8/windowNT.png)
+> ![windowNT.png (1024×1313) (xiaolincoding.com)|575](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E5%86%85%E6%A0%B8/windowNT.png)
 
 特点：
 - Multitask **多任务操作系统**
