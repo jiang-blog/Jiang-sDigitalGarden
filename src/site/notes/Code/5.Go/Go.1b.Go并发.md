@@ -27,15 +27,15 @@ Goroutine 父子协程之间不存在依赖关系，主协程例外，主协程�
 一般OS线程栈大小为**2MB**
 
 协程占用了更小的内存空间，也降低了上下文切换的开销
-协程由用户态调度，通常情况下是**协作式**的，一个协程让出CPU后，才执行下一个协程(Go存在抢占式协程)
+协程由用户态调度，通常情况下是**协作式**的，一个协程让出CPU后，才执行下一个协程(**Go存在抢占式协程**)
 
-- 内存占用
+- **内存占用**
   - 创建一个 goroutine 的栈内存消耗为 2 KB，实际运行过程中，如果栈空间不够用，会自动进行扩容
   - 创建一个 thread 则需要在创建时指定堆栈大小，通常消耗 1 MB 栈内存，而且还需要一个被称为 “a guard page” 的区域用于和其他 thread 的栈空间进行隔离
-- 创建销毁开销
+- **创建销毁开销**
   - Thread 创建和销毀都会有巨大的消耗，因为要和操作系统打交道，是内核级的，通常解决的办法就是线程池
   - 而 goroutine 因为是由 Go runtime 负责管理的，创建和销毁的消耗非常小，是用户级
-- 切换开销
+- **切换开销**
   - 当 threads 切换时，需要保存各种寄存器，以便将来恢复，一般而言，线程切换会消耗 1000-1500 纳秒
   - Goroutine 切换只需保存三个寄存器：Program Counter, Stack Pointer 和 BP，切换时间约为 200 ns
 
@@ -53,10 +53,11 @@ Go 调度器也叫 Go 运行时调度器，或 *Goroutine 调度器*，指的是
 Runtime 会在程序启动的时候，创建 M 个线程（CPU 执行调度的单位），之后创建的 N 个 goroutine 都会依附在这 M 个线程上执行，这就是 *M:N 模型*
 在同一时刻，一个线程上只能跑一个 goroutine，当 goroutine 发生阻塞时，runtime 会把当前 goroutine 调度走，让其他 goroutine 来执行
 
-**M(thread) G(goroutine) P(Processor)**
 **核心结构体`sched`**
-> ![image.png](https://image.jiang849725768.asia/2023/202303081555978.png)
->![](https://golang.design/go-questions/sched/assets/9.png)
+**M(thread) G(goroutine) P(Processor)**
+
+> ![image.png|600](https://image.jiang849725768.asia/2023/202303081555978.png)
+>![|600](https://golang.design/go-questions/sched/assets/9.png)
 
 **全局队列**：存放等待运行的 G，需加锁访问
 **P 的本地队列**：同样存放等待运行的 G，数量最大为256个，通过 CAS 的方式无锁访问
@@ -114,7 +115,7 @@ type gobuf struct {
 #### 数量
 
 Go 对 Goroutine 的数量没有限制，但 Goroutine 的实际数量受到系统资源的限制
-可以使用协程池来控制协程的并发数量
+可以使用 [[Code/5.Go/Go.3.Go应用#协程池\|协程池]] 来控制协程的并发数量
 
 #### 状态
 
@@ -152,24 +153,24 @@ type m struct {
 	...
 }
 ```
-`g0` 是一个运行时中比较特殊的 Goroutine，它会深度参与运行时的调度过程，包括 Goroutine 的创建、大内存分配和 CGO 函数的执行
+`g0` 是一个`runtime`中比较特殊的 goroutine，它会深度参与运行时的调度过程，包括 Goroutine 的创建、大内存分配和 CGO 函数的执行
 
-**M0**是启动程序后的编号为0的主线程，这个 M 对应的实例会在全局变量 `runtime.M0`中，不需要在 heap 上分配，M0负责执行初始化操作和启动第一个 G，之后 M0和其他的 M 一样受 P 控制
+**M0**是启动程序后的编号为0的主线程，对应的实例会在全局变量 `runtime.M0`中，不需要在 heap 上分配，M0负责执行初始化操作和启动第一个 G，之后 M0和其他的 M 一样受 P 控制
 
-**G0**是每次启动一个M时首先创建的goroutine，仅用于负责调度队列中的G
-G0不指向任何可执行的函数。每个 M 都会有一个自己的 G0，在调度或系统调用时会使用 G0的栈空间
-全局变量的 G0是 M0的 G0
+**g0**是每次启动一个 M 时首先创建的 goroutine，仅用于负责调度队列中的 G
+g0不指向任何可执行的函数。每个 M 都会有一个自己的 g0，在调度或系统调用时会使用 g0的栈空间
+全局变量的 g0是 M0的 g0
 
 #### 数量
 
 调度器最多可以创建 10000 个线程 M，由 `runtime.debug` 中的 `SetMaxThreads` 函数设置，但实际上受系统限制通常无法达到
 其中大多数的线程都不会执行用户代码(可能陷入系统调用)，最多只会有 `GOMAXPROCS` 个活跃线程能够正常运行
 
-在大多数情况下，我们都会使用 Go 的默认设置，也就是线程数等于 CPU 数，默认的设置不会频繁触发操作系统的线程调度和上下文切换，所有的调度都会发生在用户态，由 Go 语言调度器触发，能够减少很多额外开销
+大多数情况下都使用 Go 的默认设置，线程数约等于 CPU 数，默认的设置不会频繁触发操作系统的线程调度和上下文切换，所有的调度都会发生在用户态，由 Go 语言调度器触发，能够减少很多额外开销
 
 #### 状态
 
-M 只有自旋和非自旋两种状态
+M 只有**自旋**和**非自旋**两种状态
 - 自旋状态，表示 M 绑定了 P 又没有获取 G
 - 非自旋状态，表示正在执行 Go 代码中，或正在进入系统调用，或空闲
 
@@ -205,7 +206,7 @@ type p struct {
 
 #### 数量
 
-因为调度器在启动时就会创建 `GOMAXPROCS` 个处理器，所以处理器 P 的数量一定会等于 `GOMAXPROCS`，这些处理器会绑定到不同的内核线程上，`GOMAXPROCS` 通常等同于系统 CPU 核数，以最大程度地利用 CPU
+因为调度器在启动时就会创建 `GOMAXPROCS` 个处理器，所以处理器 P 的数量一定会等于 `GOMAXPROCS`，这些处理器会绑定到不同的内核线程上，`GOMAXPROCS` **通常等同于系统 CPU 核数**，以最大程度地利用 CPU
 
 M 与 P 的数量没有绝对关系，一个 M 阻塞，P 就会去创建或者切换另一个 M，所以即使 P 的默认数量是1，也有可能会创建很多个 M 出来
 
@@ -219,7 +220,7 @@ M 与 P 的数量没有绝对关系，一个 M 阻塞，P 就会去创建或者�
 | `_Pgcstop`  | 被线程 M 持有，当前处理器由于垃圾回收被停止                                        |
 |  `_Pdead`   | 当前处理器已经不被使用                                                             |
 
-> ![](https://pic2.zhimg.com/80/v2-1760ebb88afba084731e4cf8b182f319_720w.webp)
+> ![|575](https://pic2.zhimg.com/80/v2-1760ebb88afba084731e4cf8b182f319_720w.webp)
 
 ### 调度器
 
@@ -318,7 +319,11 @@ type schedt struct {
 }
 ```
 
-### 流程
+## 调度机制
+
+> [6.8 协作与抢占 | Go 语言原本 (golang.design)](https://golang.design/under-the-hood/zh-cn/part2runtime/ch06sched/preemption/)
+
+### 调度流程
 
 > ![image.png|325](https://image.jiang849725768.asia/2023/202303081640533.png)
 
@@ -408,10 +413,6 @@ G1完成运行后 M1 上运行的 Goroutine 会切换为 G0 以负责调度协�
 接着调用 `mcall(goexit0)`，
 `mcall` 函数会切换到 g0 栈，运行 `goexit0` 函数，清理 goroutine 的一些字段，并将其添加到 goroutine 缓存池里，然后进入 schedule 调度循环
 
-## 调度机制
-
-> [6.8 协作与抢占 | Go 语言原本 (golang.design)](https://golang.design/under-the-hood/zh-cn/part2runtime/ch06sched/preemption/)
-
 ### 调度时机
 
 |      情形       | 说明                                                                                                                                                                                    |
@@ -459,7 +460,7 @@ Go 应用程序在启动时会开启一个特殊的后台线程 `sysmon` 来执�
 2. 尝试连接一个空闲的 P，之前的阻塞 G 进入到这个 P 的本地队列
 3. 如果获取不到 P，那么这个 M 进入休眠状态，加入到空闲线程中，与 M 绑定的 G 会被放入全局队列中
 
-若G创建了G'且执行时进行了非阻塞系统调用，则M结束调用后优先尝试获取原P
+若 G 创建了 G'且执行时进行了非阻塞系统调用，则 M 结束调用后优先尝试获取原 P
 
 当 G 因为休眠、通道堵塞、网络堵塞、垃圾回收导致暂停时，会被动让渡出执行的权利给其他可运行的协程继续执行
 调度器通过 `gopark()` 函数执行被动调度逻辑。`gopark()` 函数最终调用 `park_m()` 函数来完成调度逻辑
@@ -477,7 +478,7 @@ Go 应用程序在启动时会开启一个特殊的后台线程 `sysmon` 来执�
 为了解决这些问题， Go1.14 引入了基于信号的抢占式调度机制，能够解决 GC 垃圾回收和栈扫描时存在的问题
 
 1. M 注册一个 SIGURG 信号的处理函数`sighandler`
-2. Sysmon 线程检测到执行时间过长的 goroutine 或 GC stw 时，会向相应的 M发送 `SIGURG` 信号
+2. Sysmon 线程检测到执行时间过长的 goroutine 或 GC STW 时，会向相应的 M发送 `SIGURG` 信号
 3. 收到信号后，内核执行 `sighandler` 函数，通过 `pushCall` 插入 `asyncPreempt` 函数调用
 4. 回到当前 goroutine 执行 `asyncPreempt` 函数，通过 `mcall `切到 g0 栈执行 `gopreempt_m`
 5. 将当前 goroutine 插入到全局可运行队列，M 则继续寻找其他 goroutine 来运行
