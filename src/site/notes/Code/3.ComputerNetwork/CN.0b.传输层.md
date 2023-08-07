@@ -50,7 +50,7 @@ UDP：
 
 ## UDP
 
-用户数据报协议**UDP**不建立连接，仅将应用段报文附加首部信息后传递给网络层，在发送报文段之前，发送方和接收方的运输层实体之间没有握手
+用户数据报协议 UDP 不建立连接，仅将应用段报文附加首部信息后传递给网络层，在发送报文段之前，发送方和接收方的运输层实体之间没有握手
 
 > ![|600](https://cdn.xiaolincoding.com//mysql/other/format,png-20230309230439961.png)
 
@@ -75,9 +75,15 @@ UDP首部信息：
 
 ### 可靠性
 
+> [4.17 如何基于 UDP 协议实现可靠传输？ | 小林coding (xiaolincoding.com)](https://xiaolincoding.com/network/3_tcp/quic.html)
+
 UDP 可通过在应用程序自身中建立可靠性机制来实现可靠数据传输
 
-应用层加序列号和ACK。然后本地会缓存一些自己已经发过的消息，然后同时也要求对方在收到消息之后返回 ACK 来确认这个消息已经收到，如果没有收到 ACK 的话，可能会设置一些定时重传的这样的一些方式，来确保这个消息能够成功的发送到对方
+应用层加序列号和 ACK。然后本地会缓存一些自己已经发过的消息，然后同时也要求对方在收到消息之后返回 ACK 来确认这个消息已经收到，如果没有收到 ACK 的话，可能会设置一些定时重传的这样的一些方式，来确保这个消息能够成功的发送到对方
+
+### 最大长度
+
+> [为什么 UDP 数据包不能超过 512 个字节？ | 太傅博客 (taifua.com)](https://taifua.com/udp-512bytes-limit.html)
 
 ## 可靠数据传输
 
@@ -343,16 +349,14 @@ SYN 报文是特殊的 TCP 报文，虽然 SYN 报文不携带用户数据，但
 - 第一次握手丢失
 超时重传序列号相同的 SYN 报文
 - 第二次握手丢失
-客户端未收到 ACK，超时重传 SYN 报文
-服务端未收到 ACK，超时重传 SYN-ACK 报文
+客户端未收到第一次握手的 ACK，超时重传 SYN 报文
+服务端未收到第二次握手的 ACK，超时重传 SYN-ACK 报文
 - 第三次握手丢失
 **ACK 报文不会重传**，服务端未收到 ACK，超时重传 SYN-ACK 报文
 
-Linux 里
-SYN 报文最大重传次数由 `tcp_syn_retries` (default: 5)内核参数控制，通常首次超时重传的等待时间为1s，每次超时的等待时间是上一次的两倍
-SYN-ACK 报文的最大重传次数由 `tcp_synack_retries` (default: 5)内核参数控制
+Linux 里 SYN 报文最大重传次数由 `tcp_syn_retries` (default: 5)内核参数控制，通常首次超时重传的等待时间为1s，每次超时的等待时间是上一次的两倍，SYN-ACK 报文的最大重传次数由 `tcp_synack_retries` (default: 5)内核参数控制
 
-重传达到最大次数后，再经过一次等待时间后断开连接
+TCP 报文重传达到最大次数后，再经过一次等待时间后断开连接
 
 ##### 半连接&全连接
 
@@ -360,21 +364,21 @@ SYN-ACK 报文的最大重传次数由 `tcp_synack_retries` (default: 5)内核�
 - 半连接队列，也称 SYN 队列
 - 全连接队列，也称 accept 队列
 
-> ![format,png-20230309230542373.png (902×842) (xiaolincoding.com)](https://cdn.xiaolincoding.com//mysql/other/format,png-20230309230542373.png)
+> ![format,png-20230309230542373.png (902×842) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com//mysql/other/format,png-20230309230542373.png)
 
-不管是半连接队列还是全连接队列，都有最大长度限制，超过限制时，默认情况都会丢弃报文
+不管是半连接队列还是全连接队列都有**最大长度限制**，超过限制时，默认情况下都会丢弃报文
 
 队列长度可由服务器调用 `listen` 函数时指定
 ```C
 int listen (int socketfd, int backlog)
 ```
 早期 Linux 内核 backlog 指定 SYN 队列大小
-Linux 内核 2.2 之后，backlog 变成 accept 队列大小，**所以现在通常认为 backlog 是 accept 队列**
+Linux 内核 2.2 之后，backlog 变成指定 accept 队列大小，**所以现在通常认为 backlog 是 accept 队列**
 
 但是**上限值是内核参数 somaxconn 的大小**，也就说 `len(accept)  = min(backlog, somaxconn)
 
 当服务端并发处理大量请求时，如果 TCP 全连接队列过小，就容易溢出
-发生 TCP 全连接队溢出的时候，后续的请求就会被丢弃，这样就会出现服务端请求数量上不去的现象
+发生 TCP 全连接队溢出的时候，后续的请求就会被丢弃，进而导致服务端请求数量上不去的现象
 
 Linux 默认使用 `tcp_abort_on_overflow` 参数控制全连接队列溢出行为
 - `0` (default)：如果全连接队列满了，那么 server 丢弃 client 发过来的 ack
@@ -384,45 +388,45 @@ Linux 默认使用 `tcp_abort_on_overflow` 参数控制全连接队列溢出行�
 
 ##### SYN 攻击
 
-*SYN 攻击*短时间伪造不同 IP 地址的 `SYN` 报文，把 TCP 半连接队列打满，这样**当 TCP 半连接队列满了，后续再在收到 SYN 报文就会丢弃**，导致客户端无法和服务端建立连接
+*SYN 攻击*短时间伪造大量不同 IP 地址的 `SYN` 报文，把 TCP 半连接队列打满，这样**后续再在收到 SYN 报文就会丢弃**，导致客户端无法和服务端建立连接
 
 #### 关闭连接 - 四次挥手
 
 > ![](https://cdn.xiaolincoding.com//mysql/other/format,png-20230309230614791.png)
 
-1. 请求方发送 *FIN 报文*
+1. 请求方发送 **FIN 报文**
     - 首部 `FIN` 标志位置1
     - 请求方进入 `FIN_WAIT_1` 状态
-2. 接收方收到该报文后向请求方发送 ACK 应答报文
+2. 接收方收到该报文后向请求方发送 **ACK 应答报文**
     - 接收方进入 `CLOSE_WAIT` 状态
 3. 请求方收到 ACK 应答报文后进入 `FIN_WAIT_2` 状态
-4. 接收方处理完数据后，也向请求方发送FIN报文
+4. 接收方处理完数据后，也向请求方发送**FIN报文**
     - 接收方进入 `LAST_ACK` 状态
-5. 请求方收到 FIN 报文后向接收方发送 ACK 应答报文
+5. 请求方收到 FIN 报文后向接收方发送 **ACK 应答报文**
     - 请求方进入 `TIME_WAIT` 状态
 6. 接收方收到 ACK 应答报文后进入 `CLOSE` 状态，完成关闭
 7. 请求方在经过一段时间(2MSL)后，自动进入 `CLOSE` 状态，至此客户端也完成连接的关闭
 
->[!note] 报文最大生存时间
+>[!note]  MSL 报文最大生存时间
 >*报文最大生存时间*(MSL)是任何报文在网络上存在的最长时间，超过这个时间的报文将被路由器丢弃
 >IP 头中的 `TTL` 字段控制 IP 数据报可以经过的最大路由数， **MSL 应该大于等于 TTL 消耗为 0 的时间**，以确保报文已被自然消亡
->TTL 的值一般是 64，Linux 将 MSL 设置为 30s
+>TTL 的值一般是 64，Linux 中 MSL 默认设置为 30s
 
 ##### TIME_WAIT
 
-TIME_WAIT 的持续阶段为 2MSL
+TIME_WAIT 的持续阶段为 **2MSL**
 
-作用：
+**作用：**
 - 防止历史连接中的数据被后面相同四元组的连接错误的接收
   - 2MSL 足以让两个方向上的数据包都被丢弃，使得原连接的数据包在网络中都自然消失，再出现的数据包一定都是新建立连接所产生的
 - 保证接收方能被正确的关闭
   - 2MSL 可以确保第四次挥手的 ACK 报文丢失后能够收到接收方重传的 FIN 报文
 
-过多 TIME_WAIT 的危害：
+**过多 TIME_WAIT 的危害：**
 - 占用系统资源，比如文件描述符、内存资源、CPU 资源、线程资源等；
 - 占用端口资源，端口资源也是有限的，一般可以开启的端口为 32768～61000
 
-优化：
+**优化方法：**
 - 开启 `net.ipv4.tcp_tw_reuse` 和 `tcp_timestamps`，使新连接可以复用处于 TIME_WAIT 的 socket
 - 调节 `net.ipv4.tcp_max_tw_buckets` (default: 18000)参数，系统中处于 TIME_WAIT 的连接超出参数值时，重置溢出连接
 
@@ -463,12 +467,12 @@ TIME_WAIT 的持续阶段为 2MSL
 
 ##### Close 和 shutdown 函数
 
-关闭连接的方式通常有两种，分别是 RST 报文关闭和 FIN 报文关闭
-进程收到 RST 报文时直接关闭连接，不需要走四次挥手流程，是一种暴力关闭连接的方式
+关闭连接的方式通常有两种，分别是 **RST 报文关闭**和 **FIN 报文关闭**
 
+进程收到 RST 报文时直接关闭连接，不需要走四次挥手流程，是一种暴力关闭连接的方式
 安全关闭连接的方式必须通过四次挥手，由进程调用 `close` 或 `shutdown` 函数发起 FIN 报文
 
-Close 函数完全断开连接，**不仅无法传输数据，而且也不能发送数据**
+Close 函数完全断开TCP连接，**不仅无法传输数据，而且也不能发送数据**
 此时，调用了 close 函数的一方的连接叫做*孤儿连接*，如果你用 `netstat -p` 命令，会发现连接对应的进程名为空
 
 `int shutdown(int sock, int howto)`
@@ -477,18 +481,20 @@ Shutdown 函数可控制只关闭一个方向的连接
 - SHUT_WR(1)：**关闭写连接**，这就是常被称为「半关闭」的连接。如果发送缓冲区还有未发送的数据，将被立即发送出去，并发送一个 FIN 报文给对端
 - SHUT_RDWR(2)：相当于 SHUT_RD 和 SHUT_WR 操作各一次，**关闭套接字的读和写两个方向**
 
+**进程崩溃时，操作系统回收进程资源时内核会自动发送 FIN 报文完成四次挥手**
+
 #### 保活机制
 
 对于主机宕机情况,  TCP 通过*保活机制*检测
-连接空闲 `net.ipv4.tcp_keepalive_time` (default: 7200)时间后
-每间隔 `net.ipv4.tcp_keepalive_intvl` (default: 75)时间发送探测报文，如果收到响应报文则重置保活时间
-达到最高探测次数 `net.ipv4.tcp_keepalive_probes` (default: 9)后中断连接
+保活机制下连接空闲一段时间后，服务端每间隔一段时间向客户端发送探测报文，如果收到响应报文则重置空闲时间，否则达到最大探测次数后中断连接
+- 空闲时间通过 `net.ipv4.tcp_keepalive_time` (default: 7200)指定
+- 间隔时间通过 `net.ipv4.tcp_keepalive_intvl` (default: 75)指定
+- 最大探测次数通过 `net.ipv4.tcp_keepalive_probes` (default: 9)指定
 
-此外可以自己在应用层实现一个*心跳机制*
-web 服务软件一般都会提供 `keepalive_timeout` 参数来指定 HTTP 长连接的超时时间
-Web 服务软件会为设置超时时间的连接启动一个定时器，如果客户端完成一个 HTTP 请求后，在超时时间内都没有再发起新的请求，定时器的时间一到，就会触发回调函数来释放该连接
+##### 心跳机制
 
-对于进程崩溃情况，操作系统回收进程资源时会自动发送 FIN 报文完成四次挥手
+保活机制的默认时间较长，可以自己在应用层实现一个**心跳机制**
+Web 服务软件一般都会提供 `keepalive_timeout` 参数来指定 HTTP 长连接的超时时间，并为设置超时时间的连接启动一个定时器，如果客户端完成一个 HTTP 请求后，在超时时间内都没有再发起新的请求，定时器时间到达后触发回调函数来释放该连接
 
 ### 可靠性传输
 
@@ -500,10 +506,10 @@ TCP仅启动单个与发送窗口尾部报文段(分组)关联的定时器，超
 
 TCP 采用*超时/重传机制*来处理报文段的丢失问题，在发送数据时设定定时器，指定时间内未收到对方的 ACK 报文则重传
 
-超时重传时间RTO根据往返延时(RTT)动态确定，应该略大于报文往返 RTT 的值
-> ![9.jpg (1158×888) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/9.jpg?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
+**超时重传时间 RTO 根据往返延时(RTT)动态确定**，应该略大于报文往返 RTT 的值
+> ![9.jpg (1158×888) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/9.jpg)
 
-推荐的初始 RTO 值为1秒，在第一次收到确认报文前的超时都将使 RTO 值成倍增加，以保证接收到确认报文段并更新
+推荐的初始 RTO 值为1秒，在第一次收到确认报文前的超时都将使 RTO 值成倍增加，以保证接收到首个确认报文段并更新 RTO
 在 Linux 下，**α = 0.125，β = 0.25， μ = 1，∂ = 4**
 
 此外如果超时重发的数据再次超时又需要重传时，TCP **加倍超时间隔**
@@ -511,64 +517,71 @@ TCP 采用*超时/重传机制*来处理报文段的丢失问题，在发送数�
 ##### 快速重传
 
 *快速重传*指发送方在定时器到期之前收到对同一报文段的3个额外 ACK，则立刻重传该报文段
-快速重传面临**重传一个还是重传所有的问题**，因为不确定丢失报文的数量，SACK 通过确认已收到数据信息解决该问题
 
-##### SACK
-
-*选择性确认 SACK*在 ACK 报文的 TCP 头部*选项*字段里加入已收到的数据的信息
+快速重传因为不确定丢失报文的数量，面临**重传一个还是重传所有报文的问题**
+SACK 方法通过确认已收到的数据信息解决该问题
+*选择性确认 SACK*在 ACK 报文的 TCP 头部**选项字段**里加入已收到的数据的信息
 发送方由此可以知道哪些数据已被收到，只重传丢失的数据
+> ![|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/11.jpg)
 
-*D-SACK*使用 SACK 来告诉发送方**有哪些数据被重复接收**
+**Duplicate SACK** 又称 `D-SACK` 使用 SACK 来告诉发送方**有哪些数据被重复接收**
+
+用途：
 - 可以让「发送方」知道，是发出去的包丢了，还是接收方回应的 ACK 包丢了
 - 可以知道是不是「发送方」的数据包被网络延迟了
 - 可以知道网络中是不是把「发送方」的数据包给复制了
 
-> ![13.jpg (962×1082) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/13.jpg?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
+> ![13.jpg (962×1082) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/13.jpg?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
 
 #### 流量控制 - 滑动窗口
 
-滑动窗口指定**无需等待 ACK 报文而可以继续发送数据的最大值**
+滑动窗口指定**发送方无需等待 ACK 报文而可以继续发送数据的最大值**
 
-通常窗口大小由接收方的窗口大小决定，依靠 TCP 头部*接收窗口*字段交流控制
+通常**窗口大小由接收方的窗口大小决定**，依靠 TCP 头部**接收窗口字段**交流控制
 
->[!Note] 发送方滑动窗口 swnd
+**发送方滑动窗口 swnd**
+
 > ![19.jpg (1428×513) (xiaolincoding.com)|825](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/19.jpg?image_process=watermark,text_5YWs5LyX5Y-377ya5bCP5p6XY29kaW5n,type_ZnpsdHpoaw,x_10,y_10,g_se,size_20,color_0000CD,t_70,fill_0)
-> `SND.WND`：表示发送窗口的大小(由接收方指定的)
-> `SND.UNA` (Send Unacknowledged)：一个绝对指针，指向已发送但未收到确认的第一个字节的序列号，也就是 #2 的第一个字节
-> `SND.NXT`：一个绝对指针，指向未发送但可发送范围的第一个字节的序列号，也就是 #3 的第一个字节
-> 指向 #4 的第一个字节是个相对指针，值为 SND.UNA + SND.WND
-> **可用窗口大小 = SND.WND -（SND.NXT - SND.UNA）**
 
->[!Note] 接收方滑动窗口 rwnd
->  ![20.jpg (1429×498) (xiaolincoding.com)|825](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/20.jpg)
-> `RCV.WND`：表示接收窗口的大小，会被通告给发送方
-> `RCV.NXT`：一个绝对指针，指向期望从发送方发送来的下一个数据字节的序列号，也就是 #3 的第一个字节
-> 指向 #4 的第一个字节是个相对指针，值为 RCV.NXT + RCV.WND
+`SND.WND`：表示发送窗口的大小(由接收方指定)
+`SND.UNA` (Send Unacknowledged)：一个绝对指针，指向已发送但未收到确认的第一个字节的序列号，也就是 #2 的第一个字节
+`SND.NXT`：一个绝对指针，指向未发送但可发送范围的第一个字节的序列号，也就是 #3 的第一个字节
+指向 #4 的第一个字节是个相对指针，值为 SND.UNA + SND.WND
+**可用窗口大小 = SND.WND -（SND.NXT - SND.UNA）**
+
+**接收方滑动窗口 rwnd**
+
+> ![20.jpg (1429×498) (xiaolincoding.com)|825](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost2/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C/TCP-%E5%8F%AF%E9%9D%A0%E7%89%B9%E6%80%A7/20.jpg)
+
+`RCV.WND`：表示接收窗口的大小，会被通告给发送方
+`RCV.NXT`：一个绝对指针，指向期望从发送方发送来的下一个数据字节的序列号，也就是 #3 的第一个字节
+指向 #4 的第一个字节是个相对指针，值为 RCV.NXT + RCV.WND
 
 `SND.NXT` 即为下一 TCP 报文的*序列号*首部字段
 `RCV.NXT` 即为下一 TCP 报文的*确认号*首部字段
 
 滑动窗口的大小受系统内存缓冲区的限制，当缓冲区不够的情况下，如果服务器应用程序没有及时读取接收数据，接收窗口会不断收缩并通告客户端
 
-当服务端系统资源非常紧张时，操作系统可能会直接减少接收缓冲区大小进而减少接收方窗口大小，这时如果应用程序无法及时读取缓存数据，会出现数据包丢失的现象，为了防止这种情况发生，**TCP 规定不允许同时减少缓存并收缩窗口**，而是采用先收缩窗口，过段时间再减少缓存的方式避免丢包情况
+当服务端系统资源非常紧张时，操作系统可能会直接减少接收缓冲区大小，进而减少接收方窗口大小，这时如果应用程序无法及时读取缓存数据，会出现数据包丢失的现象
+为了防止这种情况发生，**TCP 规定不允许同时减少缓存和收缩窗口**，采用先收缩窗口，过段时间再减少缓存的方式避免丢包情况
 
 ##### 零窗口
 
-此外当发送方收到接收窗口为0的 ACK 报文时，将通过持续计时器间断发送仅1字节的窗口探测报文段，接收方收到后通过 ACK 报文反馈当前接收窗口大小
-窗口探测的次数一般为 3 次，每次大约 30-60 秒(不同的实现可能会不一样)
-如果 3 次过后接收窗口还是 0 的话，有的 TCP 实现就会发 `RST` 报文来中断连接
+当发送方收到接收窗口为0的 ACK 报文时，将通过持续计时器间断发送仅1字节的窗口探测报文段，接收方收到后通过 ACK 报文反馈当前接收窗口大小
+窗口探测的次数一般为 3 次，每次大约 30-60 秒
+如果 3 次过后接收窗口还是 0 的话，部分 TCP 实现就会发 `RST` 报文来中断连接
 
 ##### 糊涂窗口综合症
 
-*糊涂窗口综合症*指接收方窗口过小导致发送方每次传输小数据，浪费资源
+*糊涂窗口综合症*指接收方窗口过小导致发送方每个 TCP 报文都传输小数据，浪费资源
 
 解决方案：
 - 让接收方不通告小窗口给发送方
     当接收窗口小于 `min(MSS，缓存空间/2)` 时，向发送方通告窗口大小为0
 - 让发送方避免发送小数据
-    使用 Nagle 算法，该算法的思路是延时处理，只有满足以下条件中的任意一个，才可以发送数据：
+    使用 **Nagle 算法**，该算法的思路是延时处理，只有满足以下条件中的任意一个，才可以发送数据：
     - 窗口大小 >= MSS 并且数据大小 >= MSS
-    - 收到之前发送数据的 ack 回包
+    - 收到之前发送数据的 ACK 响应报文
 
 仅发送方采取 Nagle 算法无法避免糊涂窗口
 
@@ -580,7 +593,7 @@ TCP 采用*超时/重传机制*来处理报文段的丢失问题，在发送数�
 - 由于传输速度大幅减慢出现超时引起的没有必要的重传
 - 某一分组丢失时，任何用于传输这个分组的上游传输能力都被浪费
 
-常见的拥塞控制方法包括*端到端*拥塞控制和*网络辅助*拥塞控制
+常见的拥塞控制方法包括**端到端拥塞控制**和**网络辅助拥塞控制**
 端到端拥塞控制中端系统通过对网络行为的观察推断网络拥塞
 网络辅助拥塞控制中路由器向发送方端系统提供网络拥塞的显式反馈信息
 
@@ -600,16 +613,17 @@ TCP 连接的每一端都是由一个接收缓存、一个发送缓存和几个�
 TCP使用ACK来触发(或计时)增大它的拥塞窗口长度，感知到丢包时降低其发送速率
 
 TCP拥塞控制算法使用AIMD(线性增、乘性减少)，包括三个部分
-- 慢启动(slow-start, SS)阶段
+- **慢启动(slow-start, SS)阶段**
   - 接收到的每个 ACK 报文使 `cwnd += 1`，因此每经过1RTT 后 `cwnd *= 2` (指数型增长)
-- 拥塞避免(congestion-avoidance, CA)阶段
+- **拥塞避免(congestion-avoidance, CA)阶段**
   - 接收到的每个 ACK 报文使 cwnd 增加1/cwnd，也即每经过1RTT 后 `cwnd += 1`
-- 快速恢复(fast recovery，FR)阶段
-  - 对于每个冗余 ACK，`cwnd += 1`，最终，当丢失报文段的一个 ACK 到达时，`cwnd = ssthresh` ，进入 CA 阶段
+- **快速恢复(fast recovery，FR)阶段**
+  - 对于每个冗余 ACK，`cwnd += 1`，最终，当丢失报文段的 ACK 到达时，`cwnd = ssthresh` ，进入 CA 阶段
 
-1. 连接刚建立时，cwnd 通常置为1(cwnd 单位为 [[Code/3.ComputerNetwork/CN.0b.传输层#^mss\|MSS]])，连接处于 SS 阶段
+1. 连接刚建立时，cwnd 通常置为1(单位为 [[Code/3.ComputerNetwork/CN.0b.传输层#^mss\|MSS]])，连接处于 SS 阶段
 2. 当拥塞窗口 cwnd 大小超过*慢启动门限 ssthresh* 时进入 CA 阶段
-3. 发生超时重传时，`ssthresh = cwnd/2`，cwnd 重设为初始值(1)，再次进入 SS 阶段，cwnd 增长至 ssthresh 值后再次进入 CA 阶段
+3. 发生超时重传时，`ssthresh = cwnd/2`，cwnd 重设为初始值(1)，再次进入 SS 阶段
+4. cwnd 增长至 ssthresh 值后再次进入 CA 阶段
 5. 发生快速重传时，`ssthresh = cwnd/2`，`cwnd = ssthresh+3` (将3个冗余 ACK 计算在内)，进入 FR 阶段
 	- 如缺失报文段最终超时，则 cwnd 重设为初始值，进入 SS 阶段
 	- 收到新数据的 ACK 后，进入 CA 阶段
@@ -618,14 +632,14 @@ TCP拥塞控制算法使用AIMD(线性增、乘性减少)，包括三个部分
 
 #### 公平性
 
-- 相同RTT下两条TCP连接基本实现平等地共享链路带宽
-- 较小RTT能够享用更高吞吐量
-- 无拥塞控制的UDP连接会压制TCP流量
-- 应用程序可使用多个TCP连接来抢占带宽
+- 相同 RTT 下两条 TCP 连接基本实现平等地共享链路带宽 
+- 较小 RTT 能够享用更高吞吐量 
+- 无拥塞控制的 UDP 连接会压制 TCP 流量 
+- 应用程序可使用多个 TCP 连接来抢占带宽 
 
-### TCP-socket 编程
+### TCP-Socket 编程
 
-> ![format,png-20230309230545997.png (1188×1007) (xiaolincoding.com)](https://cdn.xiaolincoding.com//mysql/other/format,png-20230309230545997.png)
+> ![format,png-20230309230545997.png (1188×1007) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com//mysql/other/format,png-20230309230545997.png)
 
 1. 服务端和客户端初始化 `socket`，得到文件描述符
 2. 服务端调用 `bind`，将 socket 绑定在指定的 IP 地址和端口
@@ -637,9 +651,9 @@ TCP拥塞控制算法使用AIMD(线性增、乘性减少)，包括三个部分
 8. 客户端断开连接时，会调用 `close`，那么服务端 `read` 读取数据的时候，就会读取到了 `EOF`，待处理完数据后，服务端调用 `close`，表示连接关闭
 
 > 建立连接
-> ![socket三次握手.drawio.png (944×722) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4/%E7%BD%91%E7%BB%9C/socket%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B.drawio.png)
+> ![|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4/%E7%BD%91%E7%BB%9C/socket%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B.drawio.png)
 > 关闭连接
-> ![format,png-20230309230538308.png (753×794) (xiaolincoding.com)](https://cdn.xiaolincoding.com//mysql/other/format,png-20230309230538308.png)
+> ![|600](https://cdn.xiaolincoding.com//mysql/other/format,png-20230309230538308.png)
 
 **accpet 系统调用并不参与 TCP 三次握手过程**，它只是负责从 TCP 全连接队列取出一个已经建立连接的 socket
 
