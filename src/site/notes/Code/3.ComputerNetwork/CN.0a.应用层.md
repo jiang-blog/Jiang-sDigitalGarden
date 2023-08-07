@@ -907,6 +907,86 @@ Servlet 是用 Java语言实现的一个接口，属于面向企业级 Java的�
 同时HTTP通过代理服务器减轻网络负载
 [[Code/3.ComputerNetwork/CN.0a1.HTTP协议#代理/缓存\|CN.0a1.HTTP协议#代理/缓存]]
 
+### DNS
+
+**域名系统 DNS**(Domain Name System)提供映射到其他域名或者 IP，或者 IP 映射到域名的功能
+
+DNS是：
+- 一个由分层的DNS服务器(DNS server) 实现的分布式数据库
+- 一个主机用于查询分布式数据库的应用层协议
+
+DNS功能：
+- 主机名-IP 地址的转换
+- 主机别名(host aliasing) - 规范主机名(canonical hostname) 的转换
+  - 有着复杂主机名的主机拥有一个或者多个别名
+- 邮件服务器别名-规范主机名的转换
+- 负载分配(load distribution)
+  - 繁忙站点被冗余分布在多台服务器上，其规范主机名连接着一个IP地址集合
+
+>[!note] 域名
+>主机域名往往采用层次树状结构的命名方法，域名命名从本域往上，直到树根，中间使用“.”间隔不同的级别
+>例如：`ustc.edu.cn`、`auto.ustc.edu.cn`、`www.auto.ustc.edu.cn`
+>Internet 根被划为几百个顶级域(top lever domains)，每个(子)域下面可划分为若干子域(subdomains)，每个域管理自己的子域
+>
+>域的域名：可以用于表示一个域
+>主机的域名：一个域上的一个主机
+
+DNS 服务器结构：
+1. 根 DNS 服务器
+  - 提供顶级域服务器的 IP 地址
+2. 顶级域(Top-Level Domain, TLD) DNS 服务器
+  - 负责通用顶级域名(如 com, org, net,edu 和 gov)或国家顶级域名(如 cn，uk，fr，ca，jp ) ，管理注册在该顶级域名下的所有二级域名
+  - 提供权威 DNS 服务器的 IP 地址
+3. 权威 DNS 服务器
+  - 组织机构的 DNS 服务器，提供组织机构服务器(如 Web 和 mail)可访问的主机和 IP 之间的映射
+4. 本地 DNS 服务器(Local DNS Server)
+  - 严格来说不属于DNS系统的层次结构
+  - 每个ISP都有一台本地DNS服务器
+
+#### 域名解析
+
+DNS 查询方式分为**递归查询**和**迭代查询**两种：
+
+![|375](https://image.jiang849725768.asia/2022/202212081811082.png)
+递归查询下本地 DNS 服务器向根 DNS 服务器发送请求后，根服务器向下发送查询请求，然后将结果返回给本地 DNS 服务器
+
+缺点：根节点负担重
+
+![|325](https://image.jiang849725768.asia/2022/202212081814132.png)
+迭代查询下域名服务器向本地 DNS 服务器返回下一步应访问的 DNS 服务器，本地 DNS 服务器迭代访问直到返回最终 IP 地址
+
+####  DNS 缓存
+
+在一个请求链中，当某 DNS 服务器接收到一个 DNS 回答(例如某主机名到 IP 地址的映射)时将映射缓存在本地存储器中，并在一定时间后丢弃，通过缓存可减少对根节点的请求
+
+DNS服务器将主机名到IP地址的映射关系以**资源记录**(Resource Record，RR)的形式进行存储
+每条记录都包含`(Domain_Name, TTL, Type, Class, Value)`
+- Domain_name: 域名
+- TTL: time to live, 生存时间
+- Class 类别：对于Internet，值为IN(可维护非Internet值)
+- Value 值：可以是数字，域名或ASCII串
+- Type 类别：资源记录的类型
+
+解析记录存储在域名服务器中，用于表达域名与 IP 之间的对应关系，根据使用场景记录可以分成不同的类型
+| type  | 解释                                                                                                  |
+| ----- | ----------------------------------------------------------------------------------------------------- |
+| A     | 地址记录(Address),返回域名指向的IPv4地址                                                              |
+| AAAA  | AAAA记录(AAAA record),返回域名指向的IPv6地址                                                          |
+| NS    | 域名服务器记录(Name Server),返回保存下一级域名信息的服务器地址。该记录只能设置为域名,不能设置为IP地址 |
+| CNAME | 规范名称记录(Canonical Name),返回另一个域名,即当前查询的域名是另一个域名的跳转                        |
+| MX    | 邮件记录(Mail eXchange),返回接收电子邮件的服务器地址                                                  |
+
+DNS协议：查询和响应报文的报文格式相同
+报文首部包含12个字节，又分为六个字段，第一个字段为报文标识符(id)，第二个字段为标志，包含对报文类型的各种标志，如1bit的“查询/回答”标志位指出报文是查询报文(0)还是回答报文(1)
+
+#### 底层协议
+
+DNS 同时使用 TCP 和 UDP 协议的 53 号端口，**大部分情况下使用 UDP 协议**，在区域传输 (同步解析记录)和 DNS 响应大于 UDP 报文最大长度(512 byte)的时候使用 TCP 协议
+
+原因：
+- 所需传输内容少
+- UDP 传输速度快
+
 ### FTP
 
 **文件传输协议**(File Transfer Protocol，FTP)是一个用于在计算机网络上在客户端和服务器之间进行文件传输的应用层协议。默认控制端口号为21，传输端口号为20
@@ -918,7 +998,7 @@ FTP用于向远程主机上传输文件或从远程主机接收文件，使用�
 
 目前为止(2022-12-06)，FTP协议在主流浏览器中基本被弃用
 
-### EMail
+### SMTP
 
 互联网电子邮件系统由**用户代理**(user agent)、**邮件服务器**(mail server) 和**简单邮件传输协议**(Simple Mail Transfer Protocol, **SMTP**)三部分组成
 SMTP使用客户-服务器结构，默认端口为25，报文必须为7位ASCII码
@@ -946,70 +1026,6 @@ SMTP与HTTP的区别：
 ![|525](https://image.jiang849725768.asia/2022/202212072023591.png)
 
 **多媒体邮件扩展MIME**(multimedia mail extension)用于报文扩展，使用指定编码方式将非ASCII码内容编码为ASCII码发送
-
-### DNS
-
-**域名系统DNS**(Domain Name System)提供域名到IP地址的转换
-
-DNS是：
-- 一个由分层的DNS服务器(DNS server) 实现的分布式数据库
-- 一个主机用于查询分布式数据库的应用层协议
-
-DNS协议**运行在UDP之上**，使用客户-服务器结构，默认端口为53
-
-DNS功能：
-- 主机名-IP地址的转换
-- 主机别名(host aliasing) - 规范主机名(canonical hostname) 的转换
-  - 有着复杂主机名的主机拥有一个或者多个别名
-- 邮件服务器别名-规范主机名的转换
-- 负载分配(load distribution)
-  - 繁忙站点被冗余分布在多台服务器上，其规范主机名连接着一个IP地址集合
-
->[!note] 域名
->主机域名往往采用层次树状结构的命名方法，域名命名从本域往上，直到树根，中间使用“.”间隔不同的级别
->例如：`ustc.edu.cn`、`auto.ustc.edu.cn`、`www.auto.ustc.edu.cn`
->Internet 根被划为几百个顶级域(top lever domains)，每个(子)域下面可划分为若干子域(subdomains)，每个域管理自己的子域
->域的域名：可以用于表示一个域
->主机的域名：一个域上的一个主机
-
-DNS服务器类型：
-- 根DNS服务器
-  - 提供TLD服务器的IP地址
-- 顶级域(Top-Level Domain, TLD) DNS服务器
-  - 负责顶级域名(如com, org, net,edu和gov)和所有国家级的顶级域名(如cn, uk, fr, ca,jp )
-  - 提供权威DNS服务器的IP地址
-- 权威DNS服务器
-  - 组织机构的DNS服务器， 提供组织机构服务器(如Web和mail)可访问的主机和IP之间的映射
-- 本地DNS服务器(Local DNS Server)
-  - 严格来说不属于DNS系统的层次结构
-  - 每个ISP都有一台本地DNS服务器
-
-DNS工作过程：
-- 递归查询
-  ![|375](https://image.jiang849725768.asia/2022/202212081811082.png)
-	- 根节点负担重
-- 迭代查询
-  ![|325](https://image.jiang849725768.asia/2022/202212081814132.png)
-	- 通过缓存可减少对根节点的请求
-	- 根(及各级域名)服务器返回的不是查询结果，而是下一个 DNS 服务器的地址
-
->[!note] DNS缓存
->在一个请求链中，当某DNS服务器接收到一个DNS回答(例如某主机名到IP地址的映射)时将映射缓存在本地存储器中，并在一定时间后丢弃。
-
-DNS服务器将主机名到IP地址的映射关系以**资源记录**(Resource Record，RR)的形式进行存储
-每条记录都包含`(Domain_Name, TTL, Type, Class, Value)`
-- Domain_name: 域名
-- TTL: time to live, 生存时间
-- Class 类别：对于Internet，值为IN(可维护非Internet值)
-- Value 值：可以是数字，域名或ASCII串
-- Type 类别：资源记录的类型
-	- A - Name=主机，Value=IP地址
-	- CNAME - Name=别名，Value=规范主机名
-	- NS - Name=域名，Value=该域名所属的权威服务器的域名
-	- MX -Name=邮件服务器别名，Value=规范主机名
-
-DNS协议：查询和响应报文的报文格式相同
-报文首部包含12个字节，又分为六个字段，第一个字段为报文标识符(id)，第二个字段为标志，包含对报文类型的各种标志，如1bit的“查询/回答”标志位指出报文是查询报文(0)还是回答报文(1)
 
 ## P2P
 
@@ -1065,5 +1081,5 @@ CDN(Content Distribution Networks/Content Delivery Network)全网部署缓存服
 - enter deep：将CDN服务器部署至接近本地ISP的深入位置
 - bring home：将服务器集中部署在少数关键位置，通常放置在IXP
 
-CND在缓存服务器节点中存储内容的多个拷贝，用户请求内容时重定向到其中一个，从其中获取内容。
-大多数CDN利用DNS来截获并重定向请求
+CND在缓存服务器节点中存储内容的多个拷贝，用户请求内容时重定向到其中一个，从其中获取内容
+大多数 CDN 利用 DNS 来截获并重定向请求，在 DNS 解析时，CDN 内部的 DNS 智能调度系统通过负载均衡、网路等情况来选择出与主机最合适的资源服务器的 IP 作为 DNS 解析结果
