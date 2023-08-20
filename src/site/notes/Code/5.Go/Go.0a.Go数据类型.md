@@ -566,15 +566,14 @@ bucketloop:
 
 #### 删除
 
-1. 如果找到了目标 key，则把当前桶该槽位对应的 key 和 value 删除，将该槽位的 tophash 置为 emptyOne
-2. 如果发现当前槽位后面没有元素，则将 tophash 设置为 emptyReset，并循环向前检查前一个元素，若前一个元素也为空(槽位状态为 emptyOne)，则将前一个元素的 tophash 也设置为 emptyReset
-
-这样做的目的是将 emptyReset 状态尽可能地向前面的槽推进，增加查找效率，在查找的时候发现了 emptyReset 状态就不用继续往后找了，因为后面没有元素了
-
-如果在删除期间遇到了哈希表的扩容，就会分流桶中的元素，分流结束之后会找到桶中的目标元素完成键值对的删除工作
-
 Go 语言中的 map 结构在删除键值对时，**并不会真正的删除，而是将其标记为已删除**
 因为Go语言中的map结构是通过哈希表实现的，当删除键值对时，如果真正的删除该键值对，那么可能会导致哈希表中的其他键值对的位置发生变化，这样就需要重新计算哈希值，这样会影响性能
+
+如果找到了目标 key，则把当前桶该槽位对应的 key 和 value **伪删除**，将该槽位的 tophash 置为 emptyOne
+如果发现当前槽位后面没有元素，则将 tophash 设置为 emptyReset，并循环向前检查前一个元素，若前一个元素也为空(槽位状态为 emptyOne)，则将前一个元素的 tophash 也设置为 emptyReset
+目的是将 emptyReset 状态尽可能地向前面的槽推进，增加查找效率，在查找的时候发现了 emptyReset 状态就停止查找
+
+如果在删除期间遇到了哈希表的扩容，就会分流桶中的元素，分流结束之后会找到桶中的目标元素完成键值对的删除工作
 
 #### 遍历
 
@@ -588,7 +587,7 @@ Go 语言中的 map 结构在删除键值对时，**并不会真正的删除，�
 7. 假如遍历到了起始桶 startBucket 的 offset，则说明遍历完了，结束遍历
 
 **Map 每次遍历输出元素的顺序不一致**
-Go 通过使 for range 遍历 Map 的索引起点随机强制要求程序不依赖 map 的顺序，原因在于：
+Go 通过**使 for range 遍历 Map 的索引起点随机**强制要求程序不依赖 map 的顺序，原因在于：
 - Hash 表中数据每次插入的位置是变化的，同一个 map 变量内，数据删除再添加的位置也有可能变化，因为在同一个桶及溢出链表中数据的位置不分先后
 - Go 的扩容不是一个原子操作，是渐进式的，所以在遍历 map 的时候，可能发生扩容，一旦发生扩容，key 的位置就发生了重大的变化，下次遍历 map 的时候结果就不可能按原来的顺序
 
@@ -678,7 +677,7 @@ switch v := v.(type) {
 }
 ```
 
-`switch...case` 或 `v, ok := i.(T)` 允许断言失败，而 `i.(T).xx()` 或 `v := i.(T)` 不允许断言失败，否则 panic
+`switch…case` 或 `v, ok := i.(T)` 允许断言失败，而 `i.(T).xx()` 或 `v := i.(T)` 不允许断言失败，否则 panic
 
 ### interface 实现
 
@@ -971,22 +970,22 @@ select 的随机执行避免了饥饿问题，当多个 case 满足条件时避�
 
 > [go 语言设计与实现](https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-select/#524-%e5%b0%8f%e7%bb%93)
 > 我们简单总结一下 `select` 结构的执行过程与实现原理，首先在编译期间，Go 语言会对 `select` 语句进行优化，它会根据 `select` 中 `case` 的不同选择不同的优化路径：
-> 
+>
 > 1.  空的 `select` 语句会被转换成调用 [`runtime.block`](https://draveness.me/golang/tree/runtime.block) 直接挂起当前 Goroutine；
 > 2.  如果 `select` 语句中只包含一个 `case`，编译器会将其转换成 `if ch == nil { block }; n;` 表达式；
 >     -   首先判断操作的 Channel 是不是空的；
 >     -   然后执行 `case` 结构中的内容；
 > 3.  如果 `select` 语句中只包含两个 `case` 并且其中一个是 `default`，那么会使用 [`runtime.selectnbrecv`](https://draveness.me/golang/tree/runtime.selectnbrecv) 和 [`runtime.selectnbsend`](https://draveness.me/golang/tree/runtime.selectnbsend) 非阻塞地执行收发操作；
 > 4.  在默认情况下会通过 [`runtime.selectgo`](https://draveness.me/golang/tree/runtime.selectgo) 获取执行 `case` 的索引，并通过多个 `if` 语句执行对应 `case` 中的代码；
-> 
+>
 > 在编译器已经对 `select` 语句进行优化之后，Go 语言会在运行时执行编译期间展开的 [`runtime.selectgo`](https://draveness.me/golang/tree/runtime.selectgo) 函数，该函数会按照以下的流程执行：
-> 
+>
 > 1.  随机生成一个遍历的轮询顺序 `pollOrder` 并根据 Channel 地址生成锁定顺序 `lockOrder`；
 > 2.  根据 `pollOrder` 遍历所有的 `case` 查看是否有可以立刻处理的 Channel；
 >     1.  如果存在，直接获取 `case` 对应的索引并返回；
 >     2.  如果不存在，创建 [`runtime.sudog`](https://draveness.me/golang/tree/runtime.sudog) 结构体，将当前 Goroutine 加入到所有相关 Channel 的收发队列，并调用 [`runtime.gopark`](https://draveness.me/golang/tree/runtime.gopark) 挂起当前 Goroutine 等待调度器的唤醒；
 > 3.  当调度器唤醒当前 Goroutine 时，会再次按照 `lockOrder` 遍历所有的 `case`，从中查找需要被处理的 [`runtime.sudog`](https://draveness.me/golang/tree/runtime.sudog) 对应的索引；
-> 
+>
 > `select` 关键字是 Go 语言特有的控制结构，它的实现原理比较复杂，需要编译器和运行时函数的通力合作。
 
 ### Channel 实现互斥锁
