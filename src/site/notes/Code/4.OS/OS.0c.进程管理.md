@@ -27,7 +27,12 @@
 - 阻塞挂起状态：进程在外存(硬盘)并等待某个事件的出现
 - 就绪挂起状态：进程在外存(硬盘)，但只要进入内存，即刻立刻运行
 
-> ![10-进程七中状态.jpg (1166×722) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/10-%E8%BF%9B%E7%A8%8B%E4%B8%83%E4%B8%AD%E7%8A%B6%E6%80%81.jpg)
+> ![10-进程七中状态.jpg (1166×722) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E8%BF%9B%E7%A8%8B%E5%92%8C%E7%BA%BF%E7%A8%8B/10-%E8%BF%9B%E7%A8%8B%E4%B8%83%E4%B8%AD%E7%8A%B6%E6%80%81.jpg)
+
+#### 僵尸进程
+
+在进程退出的时候，内核释放该进程所有的资源，包括打开的文件，占用的内存等，但是仍然为其保留一定的信息(包括进程号，退出状态，运行时间等)，直到父进程通过 wait/waitpid 来取时才释放
+如果进程不调用 wait/waitpid 的话，那么保留的那段信息就不会释放，其进程号就会一直被占用，但是系统所能使用的进程号是有限的，如果大量的产生僵尸进程，将因为没有可用的进程号而导致系统不能产生新的进程
 
 ### 控制结构
 
