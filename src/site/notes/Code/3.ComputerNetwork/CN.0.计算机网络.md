@@ -99,20 +99,20 @@ ICP为Google, Microsoft等自构建的服务网络，目的是更好更便宜地
 
 ### 协议栈
 
-各层的所有协议被称为**协议栈**(protocol stack) ，互联网协议栈分为五个层次：
-- **5** [[ComputerNetwork.01.应用层\|应用层]]
+各层的所有协议被称为**协议栈**(protocol stack) ，互联网协议栈可以分为五个层次：
+- **5** [[Code/3.ComputerNetwork/CN.0a.应用层\|应用层]]
 	- 提供网络应用服务
 	- FTP，SMTP，HTTP，DNS
 	- **报文**(message)
-- **4** [[ComputerNetwork.0b.传输层\|传输层]]
+- **4** [[Code/3.ComputerNetwork/CN.0b.传输层\|传输层]]
 	- 进程到进程，TCP可靠，UDP快速
 	- TCP，UDP
 	- **报文段**(segment)：TCP段，UDP数据报
-- **3** 网络层
+- **3** [[Code/3.ComputerNetwork/CN.0c.网络层\|网络层]]
 	- 主机到主机，分组传输，尽力而为，不可靠
 	- IP，路由协议
 	- **分组**(packet)(如果无连接方式：数据报datagram)
-- **2** 数据链路层
+- **2** [[Code/3.ComputerNetwork/CN.0d.链路层\|数据链路层]]
 	- 相邻节点点到点通信，不一定可靠
 	- **帧**(frame)
 - **1** 物理层
@@ -120,7 +120,11 @@ ICP为Google, Microsoft等自构建的服务网络，目的是更好更便宜地
 	- **位**(bit)
 - **0** 物理媒体 (physical medium)
 
-ISO提出**开放系统互连(OSI) 模型**，包括应用层，表示层，会话层，传输层，网络层，数据链路层，物理层
+**TCP/IP 网络模型**为四层模型，包括应用层，传输层，网络层和网络接口层
+> ![|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost3@main/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/%E6%B5%AE%E7%82%B9/%E5%B0%81%E8%A3%85.png)
+
+ISO 提出**开放系统互连(OSI) 模型**，包括应用层，表示层，会话层，传输层，网络层，数据链路层，物理层
+
 1. 数据链路层：负责保证比特流的顺序和出错检测，常见协议有MAC、PPP、HDLC、以太网等
 2. 网络层：负责数据分组及路由选择，常见协议有IP、ARP、ICMP、OSPF、RIP等
 3. 传输层：建立端到端的连接，包括数据传输和流程控制，常见协议有TCP、UDP、SCTP等
@@ -128,4 +132,4 @@ ISO提出**开放系统互连(OSI) 模型**，包括应用层，表示层，会�
 5. 表示层：解决数据格式问题，提供通用数据格式，常见协议有JPEG、MPEG等
 6. 应用层：用户接口层，协议与应用程序之间的接口，常见协议有HTTP、FTP、SMTP、DNS等
 
-数据在每一层加入该层首部信息**封装**(encapsulation)后传递给下一层，接收端收到后解封装取得信息，每一层传递的数据具有两种类型的字段：**首部字段**和**有效载荷字段**(payload field)，后者通常是来自上一层的数据。
+数据在每一层加入该层首部信息**封装**(encapsulation)后传递给下一层，接收端收到后解封装取得信息，每一层传递的数据具有两种类型的字段：**首部字段**和**有效载荷字段**(payload field)，后者通常是来自上一层的数据
