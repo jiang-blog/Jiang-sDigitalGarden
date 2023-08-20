@@ -61,7 +61,7 @@ redo log 刷盘时机：
 - 后台线程每1s刷一次
 - 每次事务提交时
 
-InnoDB使用参数`innodb_flush_log_at_trx_commit`控制redo log的刷盘策略：
+InnoDB 使用参数 `innodb_flush_log_at_trx_commit` 控制 redo log 的刷盘策略：
 - 0：每次事务提交时将 redo log 留在 redo log buffer 中
 - 1：每次事务提交时将缓存在 redo log buffer 里的 redo log 直接持久化到磁盘
 - 2：每次事务提交时，只将缓存在 redo log buffer 里的 redo log写到 redo log 文件(操作系统中的Page Cache)
