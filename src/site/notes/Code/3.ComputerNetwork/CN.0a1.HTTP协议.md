@@ -30,7 +30,7 @@ HTTP 协议基于 TCP 协议，默认应用端口为80
 
 *请求报文*：
 - 报文首部
-	- 请求行 - 用于请求的方法，请求 URI 和 HTTP 版本
+	- 请求行 - **用于请求的方法，请求 URI 和 HTTP 版本**
 	- 请求首部字段 - 从客户端向服务器端发送请求报文时使用的首部，补充了请求的附加内容、客户端信息、响应内容相关优先级等信息
 	- 通用首部字段 - 请求报文和响应报文两方都会使用的首部
 	- 实体首部字段 - 针对请求报文和响应报文的实体部分使用的首部，补充了资源内容更新时间等与实体有关的信息
@@ -40,7 +40,7 @@ HTTP 协议基于 TCP 协议，默认应用端口为80
 
 *响应报文*：
 - 报文首部
-	- 状态行 - HTTP 版本，表明响应结果的状态码和原因短语
+	- 状态行 - **HTTP 版本，表明响应结果的状态码和原因短语**
 	- 响应首部字段 - 从服务器端向客户端返回响应报文时使用的首部。补充了响应的附加内容，也会要求客户端附加额外的内容信息。
 	- 通用首部字段
 	- 实体首部字段
@@ -67,13 +67,14 @@ HTTP 首部字段根据是否缓存代理分成 2 种类型：
 	- 此类别中的首部只对单次转发有效，会因通过缓存或代理而不再转发。*HTTP/1.1 和之后版本中，如果要使用 hop-by-hop 首部，需提供 Connection 首部字段。*
 	- HTTP/1.1中的逐跳首部字段：Connection、Keep-Alive、Proxy-Authenticate、Proxy-Authorization、Trailer、TE、Transfer-Encoding、Upgrade
 
-具体的首部字段内容及说明可查阅 [HTTP头字段-维基百科](https://zh.wikipedia.org/wiki/HTTP%E5%A4%B4%E5%AD%97%E6%AE%B5#%E5%B8%B8%E8%A7%81%E7%9A%84%E9%9D%9E%E6%A0%87%E5%87%86%E5%9B%9E%E5%BA%94%E5%AD%97%E6%AE%B5)
-
+**常见首部字段**：
 - `Host` - 客户端发送时指定服务端的域名
 - `Content-Length` - 服务端响应时告知数据长度
 - `Content-Type`  - 服务器响应时告知数据格式
 - `Content-Encoding` - 服务器响应时告知数据压缩方法
 - `Connection` - 客户端要求服务器使用*HTTP 长连接*机制
+
+具体的首部字段内容及说明可查阅 [HTTP头字段-维基百科](https://zh.wikipedia.org/wiki/HTTP%E5%A4%B4%E5%AD%97%E6%AE%B5#%E5%B8%B8%E8%A7%81%E7%9A%84%E9%9D%9E%E6%A0%87%E5%87%86%E5%9B%9E%E5%BA%94%E5%AD%97%E6%AE%B5)
 
 请求报文首部示例：
 
@@ -132,6 +133,7 @@ POST 是新增或提交数据的操作，会修改服务器上的资源，所以
 
 
 ## 幂等
+
 假如在不考虑诸如错误或者过期等问题的情况下，若干次请求的副作用与单次请求相同或者根本没有副作用，那么这些请求方法就能够被视作“**幂等**”的
 
 
@@ -196,13 +198,6 @@ HTTP 的 GET 请求不一定具有幂等性，在实际应用中，GET 请求通
 
 对于断连后的重新传输，可以**通过范围请求指定下载的实体范围**，仅请求部分资源，请求报文首部字段包含`Range`
 
-#### Cookies状态管理
-
-**HTTP 协议为无状态协议**，不对之前发生过的请求和响应的状态进行管理，需使用*Cookies*记录状态
-
-**客户端和服务端首次通信时**，服务器端通过响应报文内的`Set-Cookie`的首部字段信息通知客户端保存服务器发送的 Cookie，下次客户端向该服务器发送请求时自动在请求报文中加入 Cookie 值后发送
-服务端检查 Cookie 获取状态信息
-
 #### HTTP 缓存
 
 > [HTTP 缓存-小林 coding](https://xiaolincoding.Com/network/2_http/http_interview.Html#http-%E7%BC%93%E5%AD%98%E6%8A%80%E6%9C%AF)
@@ -234,14 +229,92 @@ HTTP 的 GET 请求不一定具有幂等性，在实际应用中，GET 请求通
     - `Etag`：唯一标识响应资源
     - `If-None-Match`：当资源过期时，浏览器发现响应头里有 `Etag`，则再次发起请求时使用 `If-None-Match` 告知服务器 `Etag` 值，服务器收到请求后进行比对，如果资源没有变化返回 304，如果资源变化了返回 200
 
-相较于 `Last-Modified`， `ETag` 有如下优势：
+相较于 `Last-Modified`，**`ETag` 有如下优势**：
 1. 可以更加准确地判断文件内容是否被修改，避免由于时间篡改导致的不可靠问题
 2. 可能有些文件是在秒级以内修改的，`If-Modified-Since` 能检查到的粒度是秒级的，使用 Etag就能够保证这种需求下客户端在 1 秒内能刷新多次
 3. 有些服务器不能精确获取文件的最后修改时间
 
-**协商缓存需要配合强制缓存中 `Cache-Control` 字段使用，只有在未能命中强制缓存的时候，才能发起带有协商缓存字段的请求**
+协商缓存需要配合强制缓存中 `Cache-Control` 字段使用，**只有在未能命中强制缓存的时候，才能发起带有协商缓存字段的请求**
 
-> ![http缓存.png (1348×1122) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/network/http/http%E7%BC%93%E5%AD%98.png)
+> ![http缓存.png (1348×1122) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/network/http/http%E7%BC%93%E5%AD%98.png)
+
+### 状态管理
+
+>  [图解|cookie、session、token的那些事儿 - 掘金 (juejin.cn)](https://juejin.cn/post/7064953803564384263#heading-4)
+
+**HTTP 协议为无状态协议**，不对之前发生过的请求和响应的状态进行管理，需使用*Cookies*记录状态
+
+#### Cookies
+
+**客户端和服务端首次通信时**，服务器端通过响应报文内的 `Set-Cookie` 的首部字段信息(格式为 `key=value`)通知客户端保存服务器发送的 Cookie
+下次客户端向该服务器发送请求时自动在请求报文中加入 Cookie 值后发送，服务端检查 Cookie 获取状态信息
+
+服务器有时会在响应头里添加多个 Set-Cookie，但客户端发送时不需要用多个 Cookie 字段，只要在一行里用 `;` 隔开就行
+> ![|600](https://learn.lianglianglee.com/%E4%B8%93%E6%A0%8F/%E9%80%8F%E8%A7%86HTTP%E5%8D%8F%E8%AE%AE/assets/9f6cca61802d65d063e24aa9ca7c38a4.png)
+
+由于 Cookie 通常记录客户的关键识别信息，需要使用**属性**来保护，防止外泄或窃取
+- 有效期
+  - `Expires` - 失效的绝对时间
+  - `Max-Age` - 优先采用，失效的相对时间
+- 作用域
+  - `Domain` - 指定 Cookie 所属的域名
+  - `Path` - 指定 Cookie 所属的路径
+- 安全性
+  - `HttpOnly`  - 告诉浏览器此 Cookie 只能通过浏览器 HTTP 协议传输，禁止其他方式访问
+  - `SameSite` - 防范*跨站请求伪造*(XSRF)攻击，`SameSite=Strict`可以严格限定 Cookie 不能随着跳转链接跨站发送，而`SameSite=Lax`允许 GET/HEAD 等安全方法，但禁止 POST 跨站发送
+  - `Secure` - 表示这个 Cookie 仅能用 HTTPS 协议加密传输，明文的 HTTP 协议会禁止发送，但 Cookie 本身不是加密的，浏览器里还是以明文的形式存在
+
+Cookie 应用：
+- **身份识别** - 最基本的用途，保存用户的登录信息，实现会话事务
+- **广告跟踪** - 广告商网站(例如 Google)为用户设置 Cookie 以使广告用 Cookie 读出用户身份推出定制广告，这种 Cookie 不是由访问的主站存储的，所以又叫*第三方 Cookie*(third-party cookie)
+
+#### Session
+
+如果说 Cookie 是客户端行为，那么 Session 就是服务端行为
+Cookie 机制在最初和服务端完成交互后，保持状态所需的信息都将存储在客户端，后续直接读取发送给服务端进行交互
+Session 代表服务器与浏览器的一次会话过程，将用户的所有活动信息、上下文信息、登录信息等都存储在服务端，只是生成一个唯一标识 ID 发送给客户端，后续的交互将没有重复的用户信息传输，取而代之的是唯一标识 ID
+
+1. 当客户端第一次请求 session 对象时候，服务器会为客户端创建一个 session，并将通过特殊算法算出一个 session 的 ID，用来标识该 session 对象
+2. 当浏览器下次请求别的资源的时候，浏览器会将 sessionID 放置到请求头中，服务器接收到请求后解析得到 sessionID，服务器找到该 id 的 session 来确定请求方的身份和一些上下文信息
+
+session 的实现方式包括 **Cookie** 和 **url 重写**
+cookie 为首选方式，url 重写则在禁止 cookie 的情况下提供服务，将会话标识号以参数形式附加在超链接的 URL 地址后面的技术称为 URL 重写
+
+**问题：**
+- Session 信息存储在服务端占用空间，因此如果用户量很大的场景，Session 信息占用的空间不容忽视
+- 对于集群化&分布式的服务器配置，需要引入高可用的 Session 集群方案，引入 Session 代理实现信息共享，或者实现定制化哈希使用户负载均衡后始终访问同一节点
+
+#### Token - JWT
+
+Token 是由服务端生成并发放给客户端，具有时效性的一种验证身份的手段
+原理是服务器认证以后生成一个 JSON 对象发回给用户，之后用户与服务端通信的时候，都发回这个 JSON 对象，服务器完全依赖该对象认定用户身份
+Token 避免了 Session 机制带来的海量信息存储问题，也避免了 Cookie 机制的一些安全性问题，属于典型的时间换空间
+
+> ![|625](https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/b93c9ae060ae4d23ba6ed98b45db5c10~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.awebp)
+
+1. 客户端将用户的账号和密码提交给服务器
+2. 服务器对其进行校验，通过则生成一个 token 值，将其保存在数据库，同时也返回给客户端，作为后续的请求交互身份令牌
+3. 客户端拿到服务端返回的 token 值后，可将其保存在本地，以后每次请求服务器时都携带该 token，提交给服务器进行身份校验
+4. 服务器接收到请求后，解析出其中的 token，再根据相同的加密算法和参数生成 token 与客户端的 token 进行对比，一致则通过，否则拒绝服务
+5. token 验证通过，服务端就可以根据该 token 中的 uid 获取对应的用户信息，进行业务请求的响应
+
+**Token 设计**
+
+以 JSON Web Token(JWT)为例，Token 主要由 3 部分组成：
+- Header 头部信息 - 记录了使用的加密算法信息
+- Payload 净荷信息 - 记录了用户信息和过期时间等
+- Signature 签名信息 - 对前两部分的签名，防止数据篡改
+
+> ![|625](https://www.wangbase.com/blogimg/asset/201807/bg2018072303.jpg)
+
+服务器生成的 JWT token 的形式为 `Header.Payload.Signature`，其中 header 和 payload 的信息不做加密，只做一般的 base64URL 编码，signature 使用 header 里指定的签名算法外加服务器密钥加密生成
+
+之后服务端每次收到 token 后剥离出 header 和 payload 获取算法、用户、过期时间等信息，然后根据自己的密钥生成 signature，并与 token的 signature 进行一致性验证，实现用 CPU 加解密的时间换取存储空间
+
+> JWT 默认是不加密的，任何人都可以读到，所以不要把秘密信息放在这个部分
+> JWT 的最大缺点是，由于服务器不保存 session 状态，因此无法在使用过程中废止某个 token，或者更改 token 的权限，也就是说，一旦 JWT 签发了，在到期之前就会始终有效，除非服务器部署额外的逻辑。
+> JWT 本身包含了认证信息，一旦泄露，任何人都可以获得该令牌的所有权限。为了减少盗用，JWT 的有效期应该设置得比较短。对于一些比较重要的权限，使用时应该再次对用户进行认证
+> 为了减少盗用，JWT 不应该使用 HTTP 协议明码传输，要使用 HTTPS 协议传输
 
 ### 返回内容
 
@@ -251,11 +324,20 @@ HTTP 的 GET 请求不一定具有幂等性，在实际应用中，GET 请求通
 
 机制类型：
 - 服务器驱动协商(Server-driven Negotiation)
-	- 由服务器端进行内容协商。以请求的首部字段为参考，在服务器端自动处理
+  - 由服务器端进行内容协商。以请求的首部字段为参考，在服务器端自动处理
 - 透明协商(Transparent Negotiation)
-	- 是服务器驱动和客户端驱动的结合体，是由服务器端和客户端各自进行内容协商的一种方法
+  - 是服务器驱动和客户端驱动的结合体，是由服务器端和客户端各自进行内容协商的一种方法
 - 客户端驱动协商(Agent-driven Negotiation)
-	- 由客户端进行内容协商的方式。用户从浏览器显示的可选项列表中手动选择
+  - 由客户端进行内容协商的方式。用户从浏览器显示的可选项列表中手动选择
+
+### **TODO**跨域
+
+跨域指的是不同源之间的资源访问，只要请求的 url 有以下不同，都属于“跨域”：
+- 协议: http, https, …
+- 域名
+- 端口
+
+
 
 ## HTTPS
 
@@ -425,7 +507,7 @@ ECDHE 算法握手具体流程：
     3. `Server Key Exchange`
         - 选择的椭圆曲线类型(同时确定了基点G)
         - 根据基点 G 和私钥计算出的服务端的椭圆曲线公钥(用 RSA 签名算法进行数字签名)
-    4.  `Server Hello Done`
+    4. `Server Hello Done`
         - 告知客户端内容发送完毕
 3. 客户端通过 CA 公钥验证服务器身份，**生成一个随机数作为客户端椭圆曲线的私钥，进而生成客户端的椭圆曲线公钥**，同时通过协商的加密算法生成会话密钥
 4. 第三次握手
@@ -453,7 +535,7 @@ TLS 1.3 把 Hello 和公钥交换这两个消息合并成了一个消息，只�
 2. 服务端收到后，选定一个椭圆曲线等参数，然后返回消息时，带上服务端生成的公钥
 3. 二者生成会话密钥进行加密通信
 
-此外 TLS1.3 对于密钥交换算法废除了不支持前向安全性的 RSA 和 DH 算法，只支持 ECDHE 算法
+此外 TLS1.3 对于密钥交换算法废除了不支持前向安全性的 RSA 和 DH 算法，**只支持 ECDHE 算法**
 
 #### TLS 优化
 
@@ -486,8 +568,8 @@ Pre-shared Key 也有重放攻击的危险
 
 > [!Note] 重放攻击
 > ![重放攻击](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E7%BD%91%E7%BB%9C/https%E4%BC%98%E5%8C%96/%E9%87%8D%E6%94%BE%E6%94%BB%E5%87%BB.png)
-> 假设 Alice 想向 Bob 证明自己的身份。 Bob 要求 Alice 的密码作为身份证明，爱丽丝应尽全力提供（可能是在经过如哈希函数的转换之后）。与此同时，Eve 窃听了对话并保留了密码（或哈希）
-> 交换结束后，Eve（冒充 Alice ）连接到 Bob。当被要求提供身份证明时，Eve 发送从 Bob 接受的最后一个会话中读取的 Alice 的密码（或哈希），从而授予 Eve 访问权限
+> 假设 Alice 想向 Bob 证明自己的身份。 Bob 要求 Alice 的密码作为身份证明，爱丽丝应尽全力提供(可能是在经过如哈希函数的转换之后)。与此同时，Eve 窃听了对话并保留了密码(或哈希)
+> 交换结束后，Eve(冒充 Alice )连接到 Bob。当被要求提供身份证明时，Eve 发送从 Bob 接受的最后一个会话中读取的 Alice 的密码(或哈希)，从而授予 Eve 访问权限
 > 重放攻击的危险之处在于，如果中间人截获了某个客户端的 Session ID 或 Session Ticket 以及 POST 报文，而一般 POST 请求会改变数据库的数据，中间人就可以利用此截获的报文，不断向服务器发送该报文，这样就会导致数据库的数据被中间人改变了，而客户是不知情的
 >避免重放攻击的方式就是需要**对会话密钥设定一个合理的过期时间**
 
@@ -521,7 +603,7 @@ HTTP 最突出的优点是**简单、灵活和易于扩展、应用广泛和跨�
   HTTP 基本的报文格式就是 `header + body`，头部信息也是 `key-value` 简单文本的形式，**易于理解**，降低了学习和使用的门槛。
 - 灵活和易于扩展
   HTTP 协议里的各类请求方法、URI/URL、状态码、头字段等每个组成要求都没有被固定死，都允许开发人员**自定义和扩充**
-  同时 HTTP 由于是工作在应用层（ `OSI` 第七层），则它**下层可以随意变化**，比如：
+  同时 HTTP 由于是工作在应用层( `OSI` 第七层)，则它**下层可以随意变化**，比如：
   - HTTPS 就是在 HTTP 与 TCP 层之间增加了 SSL/TLS 安全传输层
   - HTTP/1.1 和 HTTP/2.0 传输协议使用的是 TCP 协议，而到了 HTTP/3.0 传输协议改用了 UDP 协议
 - 应用广泛，跨平台
@@ -594,7 +676,8 @@ SPDY 在 TCP/IP 的应用层与运输层之间通过新加会话层的形式运�
 因此 HTTP/2创建了一个协商协议标准，即*应用层协议协商*(ALPN)，以便客户端能够从 HTTP/1.0、HTTP/1.1、HTTP/2乃至其他非 HTTP 协议中做出选择
 ALPN 是一个 TLS 的扩展
 
-**重要特点**：
+##### 重要特点
+
 - **二进制分帧**
   在应用层(HTTP/2)和传输层(TCP/UDP)之间增加一个二进制分帧层，HTTP/2在层中将所有传输的信息采用二进制格式的编码分割为更小的消息和帧(frame)，其中首部信息封装到 HEADERS frame，内容实体则封装到 DATA frame
 	![](https://image.jiang849725768.asia/2022/202211272107027.png)
@@ -747,108 +830,4 @@ HTTP/1.1 规范允许一台 HTTP 服务器搭建多个 Web 站点，因此**利�
 
 *用途*：用 SSL 等加密手段进行通信，确保客户端能与服务器进行安全的通信
 
-## 相关知识
-
-### 相关协议
-
-*HTTP*(超文本传输协议(严谨译名应为*超文本转移协议*))是Web文档传递的规范，*WWW*(万维网)的三项构建技术之一，另两个是把 SGML(标准通用标记语言)作为页面的文本标记语言的 **HTML**(超文本标记语言)以及指定文档所在地址的 **URL**(统一资源定位符)
-
-**DNS 协议**提供通过域名查找 IP 地址，或逆向从 IP 地址反查域名的服务
-
-HTTP位于TCP/IP分层中的**应用层**，数据传输过程如下：
-![|600](https://image.jiang849725768.asia/2022/202211261751316.png)
-
-这种把数据信息包装起来的做法称为**封装**(encapsulate)
-
-HTTP与各种协议的关系如下：
-![|500](https://image.jiang849725768.asia/2022/202211212023993.png)
-
-**URI**(Uniform Resource Identifier，统一资源定位标识符) 用字符串标识某一互联网资源，而 URL 表示资源的地点(互联网上所处的位置)，后者是前者的子集
-表示指定的 URI，要使用涵盖全部必要信息的绝对 URI、绝对 URL 以及相对 URL
-
-`http://user:pass@www.example.jp:80/dir/index.htm?uid=1#ch1`为**绝对URI**，不区分大小写
-- `http`或`https`为协议方案名
-- `user:pass`为登录信息(可选项)
-	指定用户名和密码作为从服务器端获取资源时必要的登录信息
-- `www.example.jp`为服务器地址
-	类似这种 DNS 可解析的名称，或是 192.168.1.1 这类 IPv4 地址名，还可以是\[0:0:0:0:0:0:0:1\] 这样用方括号括起来的 IPv6 地址名
-- `80`为服务器端口号(可选项)
-	省略则自动使用默认端口号
-- `/dir/index.htm`为带层次的文件路径
-	指定服务器上的文件路径来定位特指的资源
-- `uid=1`为查询字符串(可选项)
-- `ch1`为片段标识符(可选项)
-
-相对URL与带层次的文件路径类似
-
-用来制定HTTP协议技术标准的文档被称为**RFC**(征求修正意见书)
-
-### Web构建
-
-Web页由HTML文件，JPEG图像等多种对象组成，其含有一个基本的HTML文件，该文件中包含对其他对象的引用(链接)
-
-#### HTML
-
-**HTML**(HyperText Markup Language，超文本标记语言)是为了发送Web 上的**超文本**(Hypertext)而开发的标记语言。
-超文本是一种文档系统，可将文档中任意位置的信息与其他信息(文本或图片等)建立关联，即超链接文本。
-标记语言是指通过在文档的某部分穿插特别的字符串标签，用来修饰文档的语言。
-我们把出现在 HTML 文档内的这种特殊字符串叫做 **HTML 标签**(Tag)
-
-示例;
-```html
-<html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>hackr.jp</title>
-<style type="text/css">
-.logo {
-padding: 20px;
-text-align: center;
-}
-</style>
-</head>
-<body>
-<div class="logo">
-<p><img src="photo.jpg" alt="photo" width="240" height="127" /></p>
-<p><img src="hackr.gif" alt="hackr.jp" width="240" height="84" /></p>
-<p><a href="http://hackr.jp/">hackr.jp</a> </p>
-</div>
-</body>
-</html>
-```
-
-HTML5是HTML最新的修订版本，广义论及HTML5时，实际指的是包括HTML、CSS和JavaScript在内的一套技术组合。
-
-##### 动态HTML
-
-**动态 HTML**(Dynamic HTML)是通过调用客户端脚本语言**JavaScript**将静态的 HTML 内容变成动态的技术的总称
-利用 **DOM**(Document ObjectModel，文档对象模型)可指定欲发生动态变化的 HTML 元素
-
-#### XML
-
-**XML**(eXtensible Markup Language，可扩展标记语言)是一种可按应用目标进行扩展的通用标记语言。
-XML 和 HTML 都是从标准通用标记语言 **SGML**(Standard GeneralizedMarkup Language)简化而成。与 HTML 相比，它对数据的记录方式做了特殊处理。
-
-#### JSON
-
-**JSON**(JavaScript Object Notation)是一种以JavaScript(ECMAScript)的对象表示法为基础的轻量级数据标记语言。能够处理的数据类型有 *布尔值/空值/对象/数组/数字/字符串*，这7种类型。
-
-#### CSS
-
-**CSS**(Cascading Style Sheets，层叠样式表)可用于指定HTML和XML内的各种元素的样式。
-示例：
-```css
-.logo {
-padding: 20px;
-text-align: center;
-}
-```
-
-#### WEB应用
-
-由程序创建的HTML内容称为*动态内容*，而事先准备好的HTML内容称为*静态内容*
-
-**CGI**(Common Gateway Interface，通用网关接口)是为提供网络服务而执行控制台应用 (或称命令行界面)的程序。在 CGI 的作用下，程序会对请求内容做出相应的动作，比如创建动态内容。
-
-**Servlet** 是一种能在服务器上创建动态内容的程序，解决了CGI创建程序带来的服务器负担
-Servlet 是用 Java语言实现的一个接口，属于面向企业级 Java的一部分
+[[CN.0a1a.HTTP相关知识\|CN.0a1a.HTTP相关知识]]
