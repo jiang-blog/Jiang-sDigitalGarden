@@ -140,14 +140,14 @@ func (e *entry) tryExpungeLocked() (isExpunged bool) {
     return p == expunged
 ```
 1. 尝试直接通过原子操作更新 read 中的 key
-2. 更新失败，加锁继续插入
+2. 如更新失败，加锁继续插入
     1. Read 中存在该 key
         1. 如果对应 entry 被标记为 `expunged` ，表示 dirty 中不包含该 key 且 `dirty != nil`，先添加该 key 至 dirty
         2. 更新 read 中的 key
     2. Read 中不存在但 Dirty 中存在该 key，仅更新 dirty 中的 key
     3. 都不存在
        1. 若 dirty 为空，触发一次 dirty 刷新，新建一个 dirty， **遍历复制** read 中**未被删除的元素**到 dirty 中
-       2. 更新 amended 为 true，标识 dirty map 中存在 read map 中没有的 key
+       2. 更新 `amended` 为 true，标识 dirty map 中存在 read map 中没有的 key
        3. 将新元素仅添加至 dirty
 
 #### 读取
@@ -276,10 +276,11 @@ Read 中已经被删除 key 对应的 entry 首先被标记为 nil
 6. 唤醒之后的 goroutine 发现锁处于饥饿模式，则能直接拿到锁，否则重置自旋迭代次数并标记唤醒位，重新进入步骤2中
 
 **解锁**
-1. 如果通过原子操作 `AddInt32` 后，锁变为完全空闲状态，则直接解锁
-2. 如果解锁一个没有上锁的锁，则直接抛出异常
-3. 如果锁处于正常模式，且没有 goroutine 等待锁释放，或者锁被其他 goroutine 设置为了锁定状态、唤醒状态、饥饿模式中的任一种(非空闲状态)，则会直接退出；否则，会通过 wakeup 原语 `Semrelease` 唤醒 waiter
-4. 如果锁处于饥饿模式，会直接将锁的所有权交给等待队列队头 waiter，唤醒的 waiter 会负责设置 `Locked` 标志位
+
+- 如果通过原子操作 `AddInt32` 后，锁变为完全空闲状态，则直接解锁
+- 如果解锁一个没有上锁的锁，则直接抛出异常
+- 如果锁处于正常模式，且没有 goroutine 等待锁释放，或者锁被其他 goroutine 设置为了锁定状态、唤醒状态、饥饿模式中的任一种(非空闲状态)，则会直接退出；否则，会通过 wakeup 原语 `Semrelease` 唤醒 waiter
+- 如果锁处于饥饿模式，会直接将锁的所有权交给等待队列队头 waiter，唤醒的 waiter 会负责设置 `Locked` 标志位
 
 ```go
 type Mutex struct {
@@ -308,7 +309,7 @@ const (
 
 正常模式下，锁的等待者会按照先进先出的顺序获取锁
 但新请求锁的 goroutine 具有优势：它正在 CPU 上执行，而且可能有好几个，所以刚刚唤醒的 goroutine 有很大可能在锁竞争中失败，长时间获取不到锁
-为了减少这种情况的出现，一旦 Goroutine 超过 1ms 没有获取到锁，它就会将当前互斥锁切换为饥饿模式，防止部分 Goroutine 被饿死
+为了减少这种情况的出现，一旦 Goroutine 超过 1ms 没有获取到锁，就会将当前互斥锁切换为饥饿模式，防止部分 Goroutine 被饿死
 
 **在饥饿模式中，互斥锁会直接交给等待队列最前面的 Goroutine**，新的 Goroutine 在该状态下不能获取锁，也不会进入自旋状态，只会在队列的末尾等待
 如果一个 Goroutine 获得了互斥锁并且它在队列的末尾或者它等待的时间少于 1ms，那么当前的互斥锁就会被切换回正常模式
@@ -435,7 +436,6 @@ func (o *Once) doSlow(f func()) {
 ```
 once 通过锁和一个唯一变量保证仅执行一遍
 
-
 ### Sync.WaitGroup
 
 Go 中使用 sync.WaitGroup 来实现并发任务的同步以及协程任务等待
@@ -493,9 +493,8 @@ func (wg *WaitGroup) Wait() {
 }
 ```
 Wait 会在计数器大于 0 并且不存在等待的 Goroutine 时，调用 `runtime.sync_runtime_Semacquire` 休眠
+
 ## Time
-
-
 
 ## Atomic
 
@@ -708,7 +707,6 @@ func (c *valueCtx) Value(key interface{}) interface{} {
 
 Strings 是专门用于操作字符串的库
 使用`strings.Builder`可以进行字符串拼接，提供了`writeString`方法拼接字符串
-
 
 ## Container
 
