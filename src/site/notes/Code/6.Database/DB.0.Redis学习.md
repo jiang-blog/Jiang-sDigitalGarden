@@ -117,28 +117,30 @@ int main(int argc, char **argv) {
 - `aeDeleteEventLoop(server.el)`中关闭停止事件处理循环
 - 退出
 
-### Redis多线程模型
+### Redis 多线程
 
-redis在V6.0以后引入多线程以提升网络I/O的性能，默认关闭多线程模式，用户可在`redis.conf`中开启
+redis 在 V6.0以后引入多线程以提升网络 I/O 的性能，默认关闭多线程模式，用户可在 `redis.conf` 中开启
 ```bash
-io-threads 4 # 最大为128
-io-threads-do-reads yes
+io-threads 1 # 启用线程数，最大为128，改动后仅启用写多线程 
+io-threads-do-reads yes # yes允许读多线程
 ```
 
-> ![2016012682-44f6eb72869ece9c_fix732 (732×473) (segmentfault.com)](https://segmentfault.com/img/remote/1460000039223706)
+Redis 6.0引入了多线程 I/O，它的总体设计思路是：
+- 主线程接受客户端并创建连接，注册读事件，读事件就绪时，主线程将读事件放到一个队列中，这个队列的顺序代表收到客户端请求的顺序，所以意味着 redis 也要按这个队列顺序执行命令
+- 主线程利用 RR 策略，将读事件分配给多个 I/O 线程，然后主线程开始忙等待（等待包括主线程在内的 I/O 多线程读取完成）
+  - I/O线程读取数据到输入缓冲区，并解析命令（不执行）
+- 主线程忙等待结束，单线程执行解析后的命令，将响应写入输出缓冲区
+- 返回响应时主线程同样利用 RR 策略，将写事件分配给多个 I/O 线程，然后主线程开始忙等待（等待包括主线程在内的 I/O 多线程写出完成）
+总结一句话就是：**多线程读取/写入，单线程执行命令**
+
+> ![2016012682-44f6eb72869ece9c_fix732 (732×473) (segmentfault.com)|600](https://segmentfault.com/img/remote/1460000039223706)
 
 与单线程模型的差异:
-- `initServer()` 中调用 `initThreadedIO` 来初始化多线程 
+- `initServer()` 中调用 `initThreadedIO` 来初始化多线程
 - `readQueryFromClient` 不读取客户端请求命令，仅调用 `postponeClientRead` 将 client 加入到 `clients_pending_read` 任务队列中去，主线程之后再分配 I/O 线程去读取客户端请求命令
 - 在 `beforeSleep` 中执行 `handleClientsWithPendingWritesUsingThreads`，利用 Round-Robin 轮询负载均衡策略，把 `clients_pending_read` 队列中的连接均匀地分配给 I/O 线程各自的本地 FIFO 任务队列和主线程自己，I/O 线程通过 socket 读取客户端的请求命令，存入 `client->querybuf` 并解析第一个命令，**但不执行命令**，主线程忙轮询，等待所有 I/O 线程完成读取任务
 - 主线程和所有 I/O 线程都完成了读取任务，主线程结束忙轮询，遍历 `clients_pending_read` 队列，**执行所有客户端连接的请求命令**，将响应数据写入到对应 `client` 的写出缓冲区，最后把 `client` 添加进一个 LIFO 队列 `clients_pending_write`
 - 在`beforeSleep`中执行`handleClientsWithPendingWritesUsingThreads`分配`clients_pending_write` 队列，多线程向客户端发送回包
-
-redis 6.0 多线程处理读请求的过程：
-- 主线程接受客户端并创建连接，注册读事件，读事件就绪时，主线程将读事件放到一个队列中（clients_pending_read），这个队列的顺序，代表收到客户端请求的顺序，所以意味着 redis 也要按这个队列顺序执行命令。
-- 主线程利用RR策略，将读事件分配给多个I/O线程（包括主线程自己负责读取socket数据，解析命令，并不会执行命令），然后主线程开始忙等待（等待I/O线程读取完成）
-- 主线程忙等待结束，主线程遍历clients_pending_read，按顺序执行命令。
-
 
 ## 过期删除&内存淘汰
 
@@ -424,7 +426,6 @@ EXEC
 ### Lua 事务
 
 V2.6 后 Redis 通过内嵌支持 Lua 环境，通过*EVAL*命令原子性执行脚本
-
 
 优点：
 - 可以编写 `if else` 逻辑
