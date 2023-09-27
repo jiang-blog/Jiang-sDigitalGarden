@@ -5,6 +5,8 @@
 
 # Mysql日志
 
+>  [(十一)MySQL日志篇之undo-log、redo-log、bin-log.....傻傻分不清！ - 掘金 (juejin.cn)](https://juejin.cn/post/7157956679932313608#heading-2)
+
 ## undo log 回滚日志
 
 实现了事务中的*原子性*，主要用于**事务回滚和 MVCC**
@@ -13,12 +15,12 @@
 
 ### 内容
 
-Undo log 记录 sql 执行相关信息，每当 InnoDB 引擎对一条记录进行操作(修改、删除、新增)时，要把回滚时需要的信息都记录到 undo log 里，比如：
-- **插入**一条记录时，存储记录主键值，回滚时把对应记录**删掉**(记录头信息中 delete_mask 标记)
-- **删除**一条记录时，存储记录备份，回滚时把备份记录**插入表中**
-- **更新**一条记录时，存储字段旧值，回滚时把这些列**更新为旧值**
+Undo log 记录 sql 执行相关信息，InnoDB 默认将 `Undo-log` 存储在 `xx.ibdata` 共享表数据文件当中，默认采用段的形式存储
+当一个事务尝试写某行表数据时，首先会将旧数据拷贝到`xx.ibdata`文件中，将表中行数据的隐藏字段：`roll_ptr`回滚指针指向`xx.ibdata`文件中的旧数据，然后再写表上的数据
 
-发生回滚时引擎读取undo log里的数据，执行相反操作
+当一个事务需要回滚时，本质上并不会以执行反`SQL`的模式还原数据，而是直接将`roll_ptr`回滚指针指向的`Undo`记录，从`xx.ibdata`共享表数据文件中拷贝到`xx.ibd`表数据文件，覆盖掉原本改动过的数据。
+
+> 如果是`insert`操作，由于插入之前这条数据都不存在，那么就不会产生`Undo`记录，此时回滚时如何删除这条记录呢？因为插入操作不会产生`Undo`旧记录，因此隐藏字段中的`roll_ptr=null`，因此直接用`null`覆盖插入的新记录即可，这样也就实现了删除数据的效果~
 
 一条记录的每一次更新操作产生的 undo log 格式都有一个 roll_pointer 指针和一个 trx_id 事务id：
 - 通过 trx_id 可以知道该记录是被哪个事务修改的
@@ -32,9 +34,10 @@ undo log 两大作用：
 
 ### 刷盘
 
-Undo log 和数据页一样，都通过 redo log 保证持久化，buffer pool 中有 undo 页，对 undo 页的修改也都会记录到 redo log
+undo log 和数据页一样，都通过 redo log 保证持久化
+开启事务后，InnoDB 更新记录前，首先要记录相应的 undo log，undo log 会写入 Buffer Pool 中的 Undo 页面，在内存修改该 Undo 页面后，需要记录对应的 redo log
 
-Undo log的删除是异步的，在它的使命结束之后，会由 Purge 线程删除
+undo log的删除是异步的，在它的使命结束之后，会由 Purge 线程删除
 
 Purge 线程判断 Undo log 中的 trx_no 属性的值小于数据库中当前最早创建的 [[Code/6.Database/DB.1.Mysql学习#^readview\|ReadView]] 的 `m_low_limit_no` 属性的值，该 Undo 日志就可以删除
 
@@ -82,14 +85,11 @@ InnoDB 用 write pos 表示 redo log 当前记录写到的位置，用 check poi
 
 ### 内容
 
-MySQL 在完成一条更新操作后，Server 层会生成一条 binlog，等事务提交时会将该事务执行过程中产生的所有 binlog 统一写入binlog 文件
+MySQL 在完成一条更新操作后，Server 层会生成一条 binlog，事务提交时会将该事务执行过程中产生的所有 binlog 统一写入binlog 文件
 
-binlog 文件是以**二进制形式**记录了所有数据库表**结构变更和表数据修改**的日志，**不会记录查询类的操作**，比如 SELECT 和 SHOW 操作
+binlog 文件是以**二进制形式**记录了所有数据库表**结构变更和表数据修改**的日志，**不会记录查询类的操作**，比如 `SELECT` 和 `SHOW` 操作
 
-binlog 有 3 种格式类型：
-- *STATEMENT*：每一条修改数据的 SQL 都会被记录到 binlog 中(逻辑日志)，但存在动态函数主从库执行结果不一致的问题
-- *ROW*：记录行数据最终的修改值，缺点是每行数据的变化结果都会被记录，使 binlog 文件过大
-- *MIXED*：包含了 STATEMENT 和 ROW 模式，根据不同的情况自动使用 ROW 模式和 STATEMENT 模式
+### 作用
 
 ### 刷盘
 
@@ -100,6 +100,24 @@ binlog 有 3 种格式类型：
 Mysql中每个线程都有binlog cache，通过参数`binlog_cache_size`控制大小，通过参数`sync_binlog`控制刷盘频率
 - Sync_binlog = 0(default)：每次提交事务只 write 不 fsync，由操作系统决定刷盘时机
 - Sync_binlog = N：每次提交事务write，提交N个事务刷盘一次
+
+binlog 的本地日志文件采用**追加写模式**，始终向文件末尾写入新的日志记录，当一个日志文件写满后，创建一个新的 `bin-log` 日志文件，每个日志文件的命名为 `mysql-bin.000001、mysql-bin.000002、mysql-bin.00000x….`
+binlog 本地日志有 3 种格式类型：
+- *STATEMENT*
+  - 记录每一条使数据库发生变更的 SQL 语句
+  - 问题：语句中的动态函数(e.g. `now(), sysdate()`)使得主从库执行结果不一致
+- *ROW*
+  - 记录发生变更的行数据的最终修改值
+  - 问题：每行数据的变化结果都会被记录带来的使 binlog 文件过大
+- *MIXED*
+  - 前两种模式的混合模式，对于可以复制的 SQL 采用 Statment 模式记录，对于无法复制的 SQL 采用 Row 记录
+
+### 缓冲
+
+`redo-log、undo-log` 的缓冲区都位于 `InnoDB` 创建的共享 `BufferPool` 中，而 `bin_log_buffer` 位于每条线程中
+> ![|625](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/d1374310f72243c7bae67dad8dab976a~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
+MySQL Server 层会给每一条工作线程都分配一个 `bin_log_buffer`，而并不是放在共享缓冲区中，以支持多种存储引擎且防止并发冲突
 
 ### 主从复制
 
@@ -165,11 +183,49 @@ V5.7 版本后，在 prepare 阶段不再让事务各自执行 redo log 刷盘�
 - **binlog (归档日志)**：是 Server 层生成的日志，主要**用于数据备份和主从复制**
 
 redo log VS binlog：
-- 生成对象不同：redo log 由InnoDB实现，binlog由Mysql的Sever层实现
-- 内容不同：redo log 是物理日志，内容基于数据页，只记录未被刷入磁盘的buffer pool数据日志；binlog为二进制，可以基于sql语句，数据本身或二者混合，保存全量日志
-- 写入方式不同：binlog为追加写，在事务提交时写入；redo log为循环写，有多种提交时机
-- 作用不同：redo log 用于崩溃恢复，binlog 用于备份恢复和主从复制
+- 所属对象不同：redo log 由 InnoDB 实现，binlog 由 Mysql 的 Sever 层实现
+- 日志内容不同：redo log 是物理日志，内容基于数据页，只记录未被刷入磁盘的 buffer pool 数据日志；binlog 为二进制，可以基于 sql 语句，数据本身或二者混合，保存全量日志
+- 写入方式和时机不同：binlog 为创建文件追加写，在事务提交时写入；redo log 为两个文件循环写，有多种提交时机
+- 使用场景不同：redo log 用于崩溃恢复，binlog 用于备份恢复和主从复制
 
 redo log VS undo log：
 - redo log 记录了此次事务*完成后*的数据状态，记录的是更新**之后**的值
 - undo log 记录了此次事务*开始前*的数据状态，记录的是更新**之前**的值
+
+## 辅助性日志
+
+- `error-log`：MySQL 线上 MySQL 由于非外在因素（断电、硬件损坏…）导致崩溃时，辅助线上排错的日志
+- `slow-log`：系统响应缓慢时，用于定位问题SQL的日志，其中记录了查询时间较长的SQL
+- `relay-log`：搭建 MySQL 高可用热备架构时，用于同步数据的辅助日志
+
+### err log
+
+`error-log`涵盖了 `MySQL-Server` 的启动、停止运行的时间，以及报错的诊断信息，也包括了错误、警告和提示等多个级别的日志详情
+一般来说，`error-log` 日志文件默认是在 `MySQL` 安装目录下的 `data` 文件夹中，也可以通过 `SHOW VARIABLES LIKE 'log_error';` 命令来查看
+
+### slow log
+
+当一条 `SQL` 执行的时间超过规定的阈值后，那么这些耗时的 `SQL` 就会被记录在`slow-log`中，当线下出现响应缓慢的问题时，可以直接通过查看慢查询日志定位问题，定位到产生问题的 `SQL` 后，再用 `explain` 这类工具去生成 `SQL` 的执行计划，然后根据生成的执行计划来判断为什么耗时长，是由于没走索引，还是索引失效等情况导致的
+
+不过对于慢查询`SQL`的监控，`MySQL`默认是关闭的
+- `slow_query_log`：设置是否开启慢查询日志，默认`OFF`关闭
+- `slow_query_log_file`：指定慢查询日志的存储目录及文件名
+
+当开启慢查询日志的监控后，可以通过设置`long_query_time`参数(默认为`10s`)来指定查询`SQL`的阈值
+慢查询日志在内存中是没有缓冲区的，也就意味着每次记录慢查询 `SQL`，都必须触发磁盘 `IO` 来完成，因此阈值设的太小，容易使得 `MySQL` 性能下降；如果设的太大，又会导致无法检测到问题 SQL
+问题来了，这个值设成多大合理呢？可以先开启`general log`，观察后实际的业务情况后再决定。
+
+#### General-log
+
+`general log`即查询日志，`MySQL`会向其中写入所有收到的查询命令，如`select、show`等，同时要注意：无论`SQL`的语法正确还是错误、也无论`SQL`执行成功还是失败，`MySQL`都会将其记录下来。对于该日志可以通过下述参数开启：
+
+- `general_log`：是否开启查询日志，默认`OFF`关闭。
+- `general_log_file`：指定查询日志的存储路径和文件名（默认在库的目录下，主机名 +`.log`）。
+
+项目测试阶段，可以先开启查询日志，然后压测所有业务，紧接着再分析日志中`SQL`的平均耗时，再根据正常的`SQL`执行时间，设置一个偏大的慢查询阈值即可
+
+### relay log
+
+`relay log` 在单库中是见不到的，该类型的日志仅存在主从架构中的从机上，主从架构中的从机，其数据基本上都是复制主机 `bin-log` 日志同步过来的，而从主机复制过来的 `bin-log` 数据放在哪儿呢？也就是放在 `relay-log` 日志中，中继日志的作用就跟它的名字一样，仅仅只是作为主从同步数据的 “中转站”
+
+当主机的增量数据被复制到中继日志后，从机的线程会不断从`relay-log`日志中读取数据并更新自身的数据，`relay-log`的结构和`bin-log`一模一样，同样存在一个`xx-relaybin.index`索引文件，以及多个`xx-relaybin.00001、xx-relaybin.00002….`数据文件
