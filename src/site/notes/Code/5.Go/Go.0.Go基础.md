@@ -5,88 +5,9 @@
 
 # Go基础
 
-[[Code/5.Go/Go.0a.Go数据类型\|Go.0a.Go数据类型]]
-[[Code/5.Go/Go.0b.Go标准库\|Go.0b.Go标准库]]
-
-## 数据属性
-
-### Const
-
-#### Iota
-
-**iota**可认为是const语句块中的行索引
-```Go
-package main
-
-import "fmt"
-
-func main() {
-	const (
-		a = iota   //0
-		b          //1
-		c          //2
-		d = "ha"   //独立值，iota += 1
-		e          //"ha"   iota += 1
-		f = 100    //iota +=1
-		g          //100  iota +=1
-		h = 1+iota //8,恢复计数
-		i          //9
-	)
-	fmt.Println(a,b,c,d,e,f,g,h,i)
-}
-```
-结果为
-```Go
-0 1 2 ha ha 100 100 8 9
-```
-
-go 没有提供 enum 枚举类型，[可以使用 const 来模拟](https://www.jianshu.com/p/ce95d7443c97)
-```go
-type PolicyType int32
-
-const (
-    Policy_MIN      PolicyType = 0
-    Policy_MAX      PolicyType = 1
-    Policy_MID      PolicyType = 2
-    Policy_AVG      PolicyType = 3
-)
-
-func (p PolicyType) String() string {
-    switch (p) {
-    case Policy_MIN: return "MIN"
-    case Policy_MAX: return "MAX"
-    case Policy_MID: return "MID"
-    case Policy_AVG: return "AVG"
-    default:         return "UNKNOWN"
-    }
-}
-
-func foo(p PolicyType) {
-    fmt.Printf("enum value: %v\n", p)
-}
-
-func main() {
-    foo(Policy_MAX) // 输出 enum value: MAX
-}
-```
-
-### Var
-
-Go 通过 `var {varible_name} {type}` 形式定义变量
-
-局部变量定义但不使用会产生编译错误，但全局变量定义不使用不产生错误
-**全局变量不能使用`:=`定义**
-
-变量通过首字母大小写方式区分 public 和 private，首字母大写 variable/method/struct 包外可见
-
-### nil
-
-nil 代表空指针
-
-**nil可以作为任意指针形参的实参传入**
-**nil可以调用所有指针方法**
-
 ## 函数
+
+**Go 语言的函数参数传递，只有值传递，没有引用传递**
 
 ### For
 
@@ -130,7 +51,7 @@ for mapiterinit(type, range, &hiter); hiter.key != nil; mapiternext(&hiter) {
 **`for value := range channel`**
 ```go
 for {
-  value_temp, ok_temp = <-range
+  value_temp, ok_temp = <-channel
   if !ok_temp {
     break
   }
@@ -145,10 +66,10 @@ for {
 
 此外，Go 语言遍历数组或者切片并删除全部元素的逻辑会被优化为直接清除目标数组内存空间中的全部数据
 
-### Make&new
+### make & new
 
-Make 函数只用于 map，slice 和 channel 初始化，并且不返回指针，因为这三种类型本身即为引用类型
-New 函数只接受一个类型参数，并且返回一个指向该类型内存地址的指针，且将其中类型初始化为0值，指针初始化为 nil
+`make` 函数只用于 map，slice 和 channel 初始化，并且不返回指针，因为这三种类型本身即为引用类型
+`new` 函数只接受一个类型参数，并且返回一个指向该类型内存地址的指针，且将其中类型初始化为0值，指针初始化为 nil
 
 ### Method 方法
 
@@ -168,17 +89,74 @@ Method 既可以通过变量指针调用也可以通过变量调用，调用方�
 |                | 值接收者                                 | 指针接收者                                                                   |
 | -------------- | ---------------------------------------- | ---------------------------------------------------------------------------- |
 | 值类型调用者   | 方法会使用调用者的一个副本，类似于“传值” | 使用值的引用来调用方法                                                       |
-| 指针类型调用者 | 指针被解引用为值                         | 实际上也是“传值”，方法里的操作会影响到调用者，类似于指针传参，拷贝了一份指针 |
+| 指针类型调用者 | 指针被解引用为值，使用该值的副本         | 实际上也是“传值”，方法里的操作会影响到调用者，类似于指针传参，拷贝了一份指针 |
 
 在进行多态调用的时候，必须满足如下规则
+
 |                | 结构体实现接口 | 结构体指针实现接口 |
 |:--------------:|:--------------:|:------------------:|
 |   结构体变量   |    编译通过    |     编译不通过     |
 | 结构体指针变量 |    编译通过    |      编译通过      |
 
-**实现了`recvType`是值类型的方法，相当于自动实现了`recvType`是指针类型的方法；而实现了`recvType`是指针类型的方法，不会自动生成`recvType`是值类型的方法**
+**类型 `T` 只有接受者是 `T` 的方法；而类型 `*T` 拥有接受者是 `T` 和 `*T` 的方法，语法上 `T` 能直接调 `*T` 的方法仅仅是 `Go` 的语法糖**
+
+```go
+type animal interface {
+	walk()
+	bark()
+}
+type Dog struct {
+	kind string
+}
+
+func (d Dog) walk() {
+	fmt.Printf("A %s is walking", d.kind)
+}
+func (d *Dog) bark() {
+	fmt.Printf("A %s is barking", d.kind)
+}
+func isAnimal(a animal) {
+	fmt.Println("It is an animal")
+}
+
+func main() {
+	ptrd := &Dog{"dog"}
+	d := Dog{"dog"}
+	ptrd.walk()          // 编译通过，解引用ptrd调用walk()
+	ptrd.bark()          // 编译通过，拷贝一份ptrd调用bark()
+	d.walk()             // 编译通过，使用d的一个副本调用walk()
+	d.bark()             // 编译通过，使用d的引用来调用bark()
+	isAnimal(ptrd)       // 编译通过，自动实现了指针类型的walk()
+	// isAnimal(d)       // 编译错误，d没有实现bark(),不是一个animal
+}
+
+```
+
+### 匿名函数&闭包
+
+>[!Cite] 参考
+> [Golang：“闭包(closure)”到底包了什么？ - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/92634505)
+
+闭包的定义是由函数及其相关的引用环境组合而成的实体
+
+闭包通常通过调用一个**外部函数**返回其**内部匿名函数**来实现
+
+在闭包**第一次实际运行**时，其保存相关的引用环境**(闭包捕获的变量和常量都是引用传递，不是值传递**)，直到闭包的生命周期结束
+
+**延迟绑定**：闭包内变量的初始值为闭包**第一次实际运行**(而非定义)时变量的最新值，同时闭包内的变量不随原始变量本身的生命周期结束而消失
+- 当闭包内变量为指针时，也同时保证了指针指向的值不消失
+
+## 错误
+
+### Error
+
+### Panic
+
+程序执行的异常会触发 panic，**panic 触发后立即执行并仅执行在该 goroutine 中的 defer 函数**，随后崩溃程序，输出包括 panic value 和函数调用的堆栈跟踪信息的日志
 
 ### Defer
+
+>  [Golang中的Defer必掌握的7知识点 - Go语言中文网 - Golang中文社区 (studygolang.com)](https://studygolang.com/articles/27408)
 
 > [【GoLang】defer的坑与应用 - 第一节_Gnight_jmup的博客-CSDN博客](https://blog.csdn.net/weixin_44626319/article/details/119581767?spm=1001.2014.3001.5502)
 
@@ -193,6 +171,8 @@ Return 过程可以被分解为以下三步：
 因此若当前函数声明中命名了返回值变量，可以在 defer 函数中对该返回值进行修改
 
 **循环体中不应使用 defer 调用语句**，一方面是会影响性能，另一方面是可能会发生一些意想不到的结果
+
+在 defer 语句中设置 panic 会覆盖掉函数中的 panic
 
 #### 具体实现
 
@@ -219,38 +199,18 @@ Defer 的实现有三种实现方式
 - 当内联不满足，且没有发生内存逃逸的情况下，使用栈分配的方式
 - 这两种情况都不符合的情况下使用堆分配
 
-### 匿名函数&闭包
-
->[!Cite] 参考
-> [Golang：“闭包（closure）”到底包了什么？ - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/92634505)
-
-闭包的定义是由函数及其相关的引用环境组合而成的实体
-
-闭包通常通过调用一个**外部函数**返回其**内部匿名函数**来实现
-
-在闭包**第一次实际运行**时，其保存相关的引用环境**(闭包捕获的变量和常量都是引用传递，不是值传递**)，直到闭包的生命周期结束
-
-**延迟绑定**：闭包内变量的初始值为闭包**第一次实际运行**(而非定义)时变量的最新值，同时闭包内的变量不随原始变量本身的生命周期结束而消失
-- 当闭包内变量为指针时，也同时保证了指针指向的值不消失
-
-## 错误
-
-### Error
-
-### Panic
-
-程序执行的异常会触发 panic，**panic 触发后立即执行并仅执行在该 goroutine 中的 defer 函数**，随后崩溃程序，输出包括 panic value 和函数调用的堆栈跟踪信息的日志
-
 ### Recover
 
-可通过在 defer 函数中定义**recover()** 函数捕获 panic 阻止程序中断
+可通过在 defer 函数中定义**recover()** 函数捕获 panic ，阻止程序中断
+
 当一个函数发生了 panic 之后
 - 如果在当前函数中没有 recover，会一直向外层传递直到主函数，最终中止协程
-- 如果在过程中遇到了 recover 则被捕获，执行完 recover 后结束函数，返回返回值类型零值
+- 如果在过程中遇到了 recover 则被捕获，执行完 recover 后结束函数，返回返回值类型的零值
 
+限制
 - Recover 只能捕获本协程内的 panic
 - 利用 recover 处理 panic 指令，defer 必须在 panic 之前被声明
-- 仅最后一个 panic 可以被 recover 捕获，在 defer 语句中设置 panic 会覆盖掉函数中的panic
+- 一个 recover 只能捕获当前的最后一个 panic
 
 如下情况 recover 捕获不住，主要原因是代码直接使用了 throw，退出了运行时
   - **内存溢出**：通过 make 申请大量内存，其本质是执行了 mmap 命令，其内存不够直接内部 throw，抛出错误
