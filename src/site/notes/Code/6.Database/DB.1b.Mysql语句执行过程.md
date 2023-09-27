@@ -5,6 +5,8 @@
 
 # Mysql 语句执行过程
 
+> ![](https://p9-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/18282222d19b4350a48de69efd8aefd7~tplv-k3u1fbpfcp-zoom-in-crop-mark:1512:0:0:0.awebp?)
+
 ## Mysql内部架构
 
 > ![mysql查询流程.png (1261×721) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/mysql/sql%E6%89%A7%E8%A1%8C%E8%BF%87%E7%A8%8B/mysql%E6%9F%A5%E8%AF%A2%E6%B5%81%E7%A8%8B.png)
@@ -199,4 +201,4 @@ EXPLAIN 语句输出的每条记录都对应着某个单表的访问方法，该
 7. 事务的两阶段提交：commit 的 prepare 阶段：引擎把刚刚写入的 redo log 刷盘
 8. 事务的两阶段提交：commit的commit阶段：引擎binlog刷盘
 
-> ![update process.png (2238×1484) (gsmtoday.github.io)](https://gsmtoday.github.io/2019/02/08/how-update-executes-in-mysql/update%20process.png)
+> ![update process.png (2238×1484) (gsmtoday.github.io)|1125](https://gsmtoday.github.io/2019/02/08/how-update-executes-in-mysql/update%20process.png)
