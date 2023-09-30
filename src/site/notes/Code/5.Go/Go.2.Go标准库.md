@@ -260,6 +260,46 @@ List 用 `interface{}` 接收和返回元素，因此在用 list 元素赋值时
 > [Go 语言 JSON 的实现原理 | Go 语言设计与实现 (draveness.me)](https://draveness.me/golang/docs/part4-advanced/ch09-stdlib/golang-json/)
 
 Go 通过 [`encoding/json`](https://golang.org/pkg/encoding/json/) 对外提供标准的 JSON 序列化和反序列化方法，即 `encoding/json.Marshal` 和 `encoding/json.Unmarshal`
+
+```go
+// 序列化
+func Marshal(v interface) ([]byte, error)
+// 序列化并且加缩进
+func MarshalIndent(v interface, prefix, indent string) ([]byte, error)
+// 反序列化 
+func Unmarshal(data []byte, v interface) error
+```
+
+### 反序列化
+
+Unmarshal 和 Marshal 做相反的操作，必要时申请 map、slice 或指针，有如下的附加规则：
+
+- 将 JSON 数据解码写入一个指针，Unmarshal 首先处理 JSON 数据为 JSON null 的情况，此时 Unmarshal 会将指针设置为 nil，否则 Unmarshal 会将 JSON 数据解码为指针所指向的值
+    - 如果指针为 nil，则 Unmarshal 为其分配一个新值并使新指针指向 JSON 数据
+- 将 JSON 数据解码为实现 Unmarshaler 接口的值，Unmarshal 调用该值的 `UnmarshalJSON` 方法，包括当输入为 JSON null 时，否则，如果该值实现 `encoding.TextUnmarshaler` 且输入是带引号的 JSON 字符串，则 Unmarshal 会使用该字符串的未加引号形式来调用该值的 `UnmarshalText` 方法
+- 将 JSON 数据解码写入一个结构体，函数会匹配输入对象的键和 Marshal 使用的键(结构体字段名或者它的标签指定的键名)，优先选择精确的匹配，但也接受大小写不敏感的匹配，默认情况下，没有相应结构字段的对象键将被忽略
+- 将 JSON 数据解码写入一个接口类型值，Unmarshal 将其中之一存储在接口值中：
+    ```
+    Bool                   对应JSON布尔类型
+    float64                对应JSON数字类型
+    string                 对应JSON字符串类型
+    []interface{}          对应JSON数组
+    map[string]interface{} 对应JSON对象
+    nil                    对应JSON的null
+    ```
+- 将一个 JSON 数组解码到 slice 中，Unmarshal 将切片长度重置为零，然后将每个元素 append 到切片中
+    - 特殊情况，如果将一个空的 JSON 数组解码到一个切片中，Unmarshal 会用一个新的空切片替换该切片
+- 将 JSON 数组解码为 Go 数组，Unmarshal 将 JSON 数组元素解码为对应的 Go 数组元素
+    - 如果 Go 数组长度小于 JSON 数组，则其他 JSON 数组元素将被丢弃
+    - 如果 JSON 数组长度小于 Go 数组，则将其他 Go 数组元素会设置为零值
+- 要将 JSON 对象解码到 map 中，Unmarshal 首先要建立将使用的 map
+    - 如果 map 为零，Unmarshal 会分配一个新 map
+    - 否则，Unmarshal 会重用现有 map，保留现有键值并将来自 JSON 对象的键/值对存储到 map 中，map 的键类型必须是任意字符串类型、整数或实现了 `json.Unmarshaler` 或 `encoding.TextUnmarshaler` 接口的类型
+- 如果 JSON 值不适用于给定的目标类型，或者 JSON 数字写入目标类型时溢出，则 Unmarshal 会跳过该字段并尽最大可能完成解析
+    - 如果没有遇到更多的严重错误，则 Unmarshal 返回一个 `UnmarshalTypeError` 来描述最早的此类错误。但无法确保有问题的字段之后的所有其余字段都将被解析到目标对象中。
+- JSON 的 null 值解码为 Go 的接口、指针、切片时会将它们设为 nil，因为 null 在 JSON 里一般表示“不存在”。 因此将 JSON null 解码到任何其他 Go 类型中不会影响该值，并且不会产生任何错误
+- 解析带引号的字符串时，无效的 UTF-8 或无效的 UTF-16 不会被视为错误。而是将它们替换为 Unicode 字符 `U+FFFD`
+
 ### 接口
 
 JSON 标准库中提供了 [`encoding/json.Marshaler`](https://draveness.me/golang/tree/encoding/json.Marshaler) 和 [`encoding/json.Unmarshaler`](https://draveness.me/golang/tree/encoding/json.Unmarshaler) 两个接口分别可以影响 JSON 的序列化和反序列化结果：
@@ -274,7 +314,7 @@ type Unmarshaler interface {
 }
 ```
 
-在 JSON 序列化和反序列化的过程中，它会使用反射判断结构体类型是否实现了上述接口，如果实现了上述接口就会优先使用对应的方法进行编码和解码操作，除了这两个方法之外，Go 语言其实还提供了另外两个用于控制编解码结果的方法，即 [`encoding.TextMarshaler`](https://draveness.me/golang/tree/encoding.TextMarshaler) 和 [`encoding.TextUnmarshaler`](https://draveness.me/golang/tree/encoding.TextUnmarshaler)：
+在 JSON 序列化和反序列化的过程中，它会使用反射判断结构体类型是否实现了上述接口，如果实现了上述接口就会优先使用对应的方法进行编码和解码操作，除了这两个方法之外，Go 语言还提供了另外两个用于控制编解码结果的方法，即 `encoding.TextMarshaler` 和 `encoding.TextUnmarshaler`：
 
 ```go
 type TextMarshaler interface {
@@ -287,8 +327,9 @@ type TextUnmarshaler interface {
 ```
 
 一旦发现 JSON 相关的序列化方法没有被实现，上述两个方法会作为候选方法被 JSON 标准库调用并参与编解码的过程
+可以在任意类型上实现上述这四个方法，自定义最终的结果，后面的两个方法的适用范围更广，但是不会被 JSON 标准库优先调用
 
-总的来说，我们可以在任意类型上实现上述这四个方法自定义最终的结果，后面的两个方法的适用范围更广，但是不会被 JSON 标准库优先调用
+基于流式的解码器 `json.Decoder` 可以从一个输入流解码 JSON 数据，同样还有一个针对输出流的 `json.Encoder` 编码对象
 
 ### 标签
 
