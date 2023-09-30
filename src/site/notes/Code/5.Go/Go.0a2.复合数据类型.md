@@ -99,7 +99,7 @@ type structtype struct {
 array 初始化：
 ```Go
 var arr = [constant]int{a,b,c}
-var arr = [...]int{a,b,c}//数组长度由初始化元素个数决定
+var arr = [...]int{a,b,c}       // 数组长度由初始化元素个数决定
 ```
 
 ### Slice
@@ -118,8 +118,8 @@ type SliceHeader struct {
 slice 初始化：
 ```Go
 // len(slice1)=high-low cap(slice1)=len(array)-low
-slice1 := array[low:high:max]// max 不能超过原数组长度
-slice2 := make([]type,length,capacity)
+slice1 := array[low:high:max]             // max 不能超过原数组长度
+slice2 := make([]type, length, capacity)  // 等同于 make([]T, cap)[:len]
 slice3 := []int{a,b,c}
 ```
 
@@ -130,14 +130,25 @@ slice1 = append(slice1,slice2...)
 ```
 
 3 种特殊 slice 类型：
-- 0-slice：slice 元素未赋值，都是类型 0值
+- 0-slice：slice 元素未赋值，都是类型 0 值
 - empty-slice：底层数组指针为特殊指针 `zerobase`，empty slice 的 `len` 为 0，`cap` 可以为任意值
 - nil-slice：未初始化 slice，底层数组指针为 nil，nil slice 的 `len` 和 `cap` 都为 0
 
 ```Go
-var s []string             // nil slice
+var s []string             // nil slice    len(s) == 0  s == nil
 var s = make([]string, 0)  // empty slice
 var s = make([]string, 5)  // 0 slice
+```
+
+```go
+func hello(num ...int) {  
+    num[0] = 18
+}
+func main() {  
+    i := []int{5, 6, 7}
+    hello(i...)
+    fmt.Println(i[0])   // 18
+}
 ```
 
 #### 复制 - copy
@@ -184,6 +195,8 @@ fmt.Println(s, x, y)
 #### 传参
 
 slice 作为引用类型，通过传入参数可以改变其底层数据，但不能改变其结构本身(长度，容量)
+
+
 
 ## Map
 
@@ -488,7 +501,7 @@ struet demo {
 type Student struct { 
     ID int `json:"-"` // 该字段不进行序列化 
     Class int `json:"class"` // 该字段与class对应
-    Name string `json:"name,omitempy"` // 如果为类型零值或空值，序列化时忽略该字段 
+    Name string `json:"name,omitempy"` // 如果为类型零值或空值，序列化时忽略该字段
     Age int `json:"age,string"` // 指定类型，支持string、number、boolen 
 }
 ```
