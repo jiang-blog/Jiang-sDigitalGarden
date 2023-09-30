@@ -9,6 +9,43 @@
 
 **Go 语言的函数参数传递，只有值传递，没有引用传递**
 
+### 可变参数
+
+> [了解golang的可变参数(... parameters)，这一篇就够了 - apocelipes - 博客园 (cnblogs.com)](https://www.cnblogs.com/apocelipes/p/9861315.html)
+
+在声明可变参数函数时，需要在参数列表的最后一个参数类型之前加上省略符号 `...`，这表示该函数会接收任意数量的该类型参数
+
+
+可变参数的传递可以使用 `...` 运算符以变量 `...` 的形式进行参数传递，这里的变量必须是与可变参数类型相同的 slice，而不能是其他类型(数组也不可以)
+
+```go
+numbers := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+sum(numbers...) // 和sum(1, 2, 3, 4, 5, 6, 7, 8, 9. 10)等价
+```
+
+**只能对slice类型使用...运算符**
+
+```go
+arr := [...]int{1, 2, 3, 4, 5}
+sum(arr...) // 编译无法通过,cannot use arr (type [5]int) as type []int in argument to sum
+```
+
+...运算符是个语法糖，**它把前面的slice直接复制给可变参数，而不是先解包成独立的n个参数再传递**
+
+**不能把独立传参和...运算符混用**
+
+```go
+slice := []int{2, 3, 4, 5}
+sum(1, slice...) // 无法通过编译
+// too many arguments in call to sum
+//    have (number, []int...)
+//    want (...int)
+```
+
+`...` 运算符将不定参数直接替换成了 slice，这样就导致前一个独立给出的参数不再算入可变参数的范围内，使得函数的参数列表从 `(...int)` 变成了 `(int, ...int)`，最终使得函数类型不匹配编译失败 
+
+正确的做法也很简单，不要混合使用...运算符给可变参数传参即可。
+
 ### For
 
 #### range
@@ -240,12 +277,12 @@ Package 作用域变量：在每一个初始化周期，运行时(runtime)挑选
 
 > [init functions in Go.](https://medium.com/golangspec/init-functions-in-go-eac191b3860a)
 
-- Init 函数先于 main 函数自动执行，不能被其他函数调用
+- Init 函数先于 main 函数自动执行，**不能被其他函数调用**
 - Init 函数没有输入参数、返回值
 - 每个包可以有多个 init 函数，**包的每个源文件也可以有多个 init 函数**，多个 init 函数按照它们的文件名顺序逐个初始化
 - 同一个包的 init 执行顺序没有明确定义，编程时要注意程序不要依赖这个执行顺序
 - 不同包的 init 函数按照包导入的依赖关系决定执行顺序
 
-golang 对没有使用的导入包会编译报错，使用 `import _ packageName` 以仅调用包的 init 函数
+golang 对没有使用的导入包会编译报错，可以使用 `import _ packageName` 以仅调用包的 init 函数
 
 Init 函数常用于初始化无法以表达式方式初始化的 package 作用域变量
