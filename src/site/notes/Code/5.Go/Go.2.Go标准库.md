@@ -386,3 +386,42 @@ type ResponseWriter interface {
 客户端可以直接通过 `net/http.Get` 使用默认的客户端 `net/http.DefaultClient` 发起 HTTP 请求，也可以自己构建新的 `net/http.Client` 实现自定义的 HTTP 事务
 在多数情况下使用默认的客户端都能满足需求，不过使用默认客户端发出的请求没有超时时间，所以在某些场景下会一直等待下去
 除了自定义 HTTP 事务之外，还可以实现自定义的 `net/http.CookieJar` 接口管理和使用 HTTP 请求中的 Cookie
+
+## 模板
+
+>  [文本和HTML模板 · Go语言圣经 (studygolang.com)](https://books.studygolang.com/gopl-zh/ch4/ch4-06.html)
+
+`text/template` 和 `html/template` 等模板包提供了一个将变量值填充到一个文本或 HTML 格式的模板的机制
+
+一个模板是一个字符串或一个文件，里面包含了一个或多个由双花括号包含的 `{{action}}` 对象
+大部分的字符串只是按字面值打印，但是对于 actions 部分将触发其它的行为
+每个 actions 都包含了一个用模板语言书写的表达式，可以输出复杂的打印值，模板语言包含通过选择结构体的成员、调用函数或方法、表达式控制流 if-else 语句和 range 循环语句，还有其它实例化模板等诸多特性
+
+```go
+const templ = `{{.TotalCount}} issues:
+{{range .Items}}----------------------------------------
+Number: {{.Number}}
+User:   {{.User.Login}}
+Title:  {{.Title | printf "%.64s"}}
+Age:    {{.CreatedAt | daysAgo}} days
+{{end}}`
+```
+
+`template.Must` 辅助函数可以用于处理模板解析检验：它接受一个模板和一个 error 类型的参数，检测 error 是否为 nil（如果不是 nil 则发出 panic 异常），然后返回传入的模板
+
+生成模板的输出需要两个处理步骤：
+1. 分析模板并转为内部表示(一般只需要执行一次)
+2. 基于指定的输入执行模板
+
+```go
+report, err := template.New("report").
+    Funcs(template.FuncMap{"daysAgo": daysAgo}).
+    Parse(templ)
+if err != nil {
+    log.Fatal(err)
+}
+```
+方法调用链的顺序：
+1. `template.New` 先创建并返回一个模板
+2. `Funcs` 方法将 `daysAgo` 等自定义函数注册到模板中，并返回模板
+3. 最后调用 `Parse` 函数分析模板
