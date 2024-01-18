@@ -12,17 +12,20 @@
 
 在 Go 语言中，reflect 实现了运行时反射，reflect 包会帮助识别 interface{} 变量的 [[Code/5.Go/Go.0a.Go数据类型#interface 实现\|底层具体类型和具体值]]
 
+在 Go 语言的反射机制中，任何接口值都由是**一个具体类型**和**具体类型的值**两部分组成的
+任意接口值在反射中都可以理解为由`reflect.Type`和`reflect.Value`两部分组成，并且reflect包提供了`reflect.TypeOf`和`reflect.ValueOf`两个函数来获取任意对象的Value和Type
+
 ## 三大法则
 
 ### reflect 将 interface{} 变量转换成反射对象
 
-由于 `reflect.TypeOf`、`reflect.ValueOf ` 两个方法的入参都是 interface{} 类型，所以在方法执行的过程中会发生类型转换，一切其他类型变量首先被转换为 interface{}类型
+`reflect.TypeOf`、`reflect.ValueOf` 两个方法的入参都是 `interface{}` 类型，所以在方法执行的过程中会发生类型转换，一切其他类型变量首先被转换为 `interface{}` 类型
 
-当一个变量被转换成 teflect 对象时，Go 语言会在编译期间完成类型转换，将变量的类型和值转换至 interface{}，并等待运行期间使用 reflect 包获取接口中存储的信息
+当一个变量被转换成 reflect 对象时，Go 语言会在编译期间完成类型转换，将变量的类型和值转换至 interface{}，并等待运行期间使用 reflect 包获取接口中存储的信息
 
 ### reflect 可以从反射对象获取 interface{} 变量
 
-reflect 中的 `reflect.Value.Interface` 能将反射对象还原成 interface 类型的变量，但只能获取 interface{} 类型的变量，如果想要将其还原成最原始的状态还需要经过类型断言
+reflect 中的 `reflect.Value.Interface` 能将反射对象还原成 interface{} 类型的变量，如果想要将其还原成最原始的状态还需要经过类型断言
 ```go
 v := reflect.ValueOf(1)
 v.Interface().(int)
@@ -30,7 +33,7 @@ v.Interface().(int)
 
 ### reflect 需要通过指针修改原始变量
 
-由于 Go 语言的函数调用都是值传递的，所以只能用迂回的方式改变原变量：先获取变量指针对应的 `reflect.Value`，再通过 `reflect.Value.Elem` 方法得到可以被设置的变量
+由于 Go 语言的函数调用都是值传递的，所以只能用迂回的方式改变原变量 - 先获取变量指针对应的 `reflect.Value`，再通过 `reflect.Value.Elem` 方法得到可以被设置的变量
 可以通过 `reflect.Value.CanSet` 来判断一个反射对象的值是否是可更改的
 
 ```go
@@ -80,67 +83,9 @@ func (v Value) Bytes() []byte
 ...
 ```
 
-`reflect.Kind` 表示该类型的特定类别(e.g. struct)
+`reflect.Kind` 表示该类型的特定类别(e.g. struct)，Go 语言中可以使用 `type` 关键字构造很多自定义类型，Kind 代表接口底层的类型，当需要区分 ptr、struct 等大品种的类型时，就会用到 Kind
 
-## 函数
-
-`reflect.TypeOf()` 函数将传入的变量隐式转换成 `reflect.emptyInterface` 类型并获取其中存储的类型信息 `reflect.rtype`
-```go
-func TypeOf(i interface{}) Type {
-	eface := *(*emptyInterface)(unsafe.Pointer(&i))
-	return toType(eface.typ)
-}
-
-func toType(t *rtype) Type {
-	if t == nil {
-		return nil
-	}
-	return t
-}
-```
-`reflect.rtype ` 是一个实现了 `reflect.Type` 接口的结构体，该结构体实现的 `reflect.rtype.String` 方法可以获取当前类型的名称
-
-`reflect.ValueOf()` 函数中先调用了 `reflect.escapes` 保证当前值逃逸到堆上，然后通过 `reflect.unpackEface` 从接口中获取数据的运行时表示 `reflect.Value`
-```go
-func ValueOf(i interface{}) Value {
-	if i == nil {
-		return Value{}
-	}
-
-	escapes(i)
-
-	return unpackEface(i)
-}
-
-func unpackEface(i interface{}) Value {
-	e := (*emptyInterface)(unsafe.Pointer(&i))
-	t := e.typ
-	if t == nil {
-		return Value{}
-	}
-	f := flag(t.Kind())
-	if ifaceIndir(t) {
-		f |= flagIndir
-	}
-	return Value{t, e.word, f}
-}
-```
-
-`NumField()` 方法返回结构体中字段的数量
-`Field(i int)` 方法返回第 i 个字段的 `reflect.Value`
-
-`reflect.Indirect()` 可以将指针 Value 转换为指针所指向对象的 Value，当传入值不为指针时不进行转换直接返回
-
-`Int` 和 `String` 可以取出 `reflect.Value` 作为 `int64` 和 `string`
-
-`CanAddr` 判断反射对象是否可以寻址，返回 `true` 时可以通过 `Addr` 方法获取反射对象的地址
-`CanSet` 判断反射对象是否可以修改
-
-### Kind
-
-`Kind` 方法用于判断变量的基本类型
-
-go 的全部基本类型如下
+reflect 包中定义的全部 Kind 基本类型如下
 ```go
 type Kind uint
 
@@ -175,11 +120,59 @@ const (
 )
 ```
 
+## 函数
+
+### TypeOf
+
+`reflect.TypeOf()` 函数将传入的变量隐式转换成 `reflect.emptyInterface` 类型并获取其中存储的类型信息 `reflect.rtype`
+```go
+func TypeOf(i interface{}) Type {
+	eface := *(*emptyInterface)(unsafe.Pointer(&i))
+	return toType(eface.typ)
+}
+
+func toType(t *rtype) Type {
+	if t == nil {
+		return nil
+	}
+	return t
+}
+```
+`reflect.rtype ` 是一个实现了 `reflect.Type` 接口的结构体，该结构体实现的 `reflect.rtype.String` 方法可以获取当前类型的名称
+
+### ValueOf
+
+`reflect.ValueOf()` 函数中先调用了 `reflect.escapes` 保证当前值逃逸到堆上，然后通过 `reflect.unpackEface` 从接口中获取数据的运行时表示 `reflect.Value`
+```go
+func ValueOf(i interface{}) Value {
+	if i == nil {
+		return Value{}
+	}
+
+	escapes(i)
+
+	return unpackEface(i)
+}
+
+func unpackEface(i interface{}) Value {
+	e := (*emptyInterface)(unsafe.Pointer(&i))
+	t := e.typ
+	if t == nil {
+		return Value{}
+	}
+	f := flag(t.Kind())
+	if ifaceIndir(t) {
+		f |= flagIndir
+	}
+	return Value{t, e.word, f}
+}
+```
+
 ### Elem
 
 `reflect.Value` 的 `Elem` 方法的作用是**获取指针指向的值，或者获取接口的动态值**，其他类型值触发 panic
 
-`reflect.Type` 的 `Elem` 方法的作用是**获取数组、chan、map、指针、切片的关联元素的类型信息**，其他类型值触发 panic
+`reflect.Type` 的 `Elem` 方法的作用是获取**数组、chan、map、指针、切片**的关联元素的**类型信息**，其他类型值触发 panic
 ```go
 t1 := reflect.TypeOf([3]int{1, 2, 3}) // 数组 [3]int
 fmt.Println(t1.String()) // [3]int
@@ -189,6 +182,18 @@ fmt.Println(t1.Elem().String()) // int
 > 使用 `Key` 方法获取 map 类型 key 的类型信息
 
 > 在定义结构体时，可以为每个字段指定一个[[Code/5.Go/Go.0a.Go数据类型#标签\|标签]]，可以使用 `Elem()` 读取这些标签
+
+### 其他
+
+`NumField()` 方法返回结构体中字段的数量
+`Field(i int)` 方法返回第 i 个字段的 `reflect.Value`
+
+`reflect.Indirect()` 可以将指针 Value 转换为指针所指向对象的 Value，当传入值不为指针时不进行转换直接返回
+
+`Int` 和 `String` 可以取出 `reflect.Value` 作为 `int64` 和 `string`
+
+`CanAddr` 判断反射对象是否可以寻址，返回 `true` 时可以通过 `Addr` 方法获取反射对象的地址
+`CanSet` 判断反射对象是否可以修改
 
 ## 语法
 
@@ -423,7 +428,7 @@ thinkMethod = valueUser2.MethodByName("Think")
 thinkMethod.Call([]reflect.Value{})
 ```
 
-### 创建对象
+### 结构体反射
 
 #### 获取 struct 成员变量的信息
 
@@ -451,7 +456,8 @@ thirdField := typeUser.FieldByIndex([]int{2}) //参数是个slice，因为有str
 fmt.Printf("third field name %s\n", thirdField.Name)
 ```
 
-获取 struct 成员方法的信息
+#### 获取 struct 成员方法的信息
+
 ```go
 typeUser := reflect.TypeOf(User{})
 methodNum := typeUser.NumMethod() //成员方法的个数。接收者为指针的方法【不】包含在内
@@ -469,7 +475,8 @@ for i := 0; i < methodNum; i++ {
 }
 ```
 
-判断类型是否实现了某接口
+#### 判断类型是否实现了某接口
+
 ```go
 //通过reflect.TypeOf((*<interface>)(nil)).Elem()获得接口类型。因为People是个接口不能创建实例，所以把nil强制转为*common.People类型
 typeOfPeople := reflect.TypeOf((*common.People)(nil)).Elem()
@@ -480,7 +487,10 @@ t2 := reflect.TypeOf(&User{})
 fmt.Printf("t1 implements People interface %t\n", t1.Implements(typeOfPeople))
 ```
 
-创建 struct
+### 创建对象
+
+#### 创建 struct
+
 ```go
 t := reflect.TypeOf(User{})
 value := reflect.New(t) //根据reflect.Type创建一个对象，得到该对象的指针，再根据指针提到reflect.Value
@@ -488,7 +498,8 @@ value.Elem().FieldByName("Id").SetInt(10)
 user := value.Interface().(*User) //把反射类型转成go原始数据类型Call([]reflect.Value{})
 ```
 
-创建 slice
+#### 创建 slice
+
 ```go
 var slice []User
 sliceType := reflect.TypeOf(slice)
@@ -503,7 +514,8 @@ users := sliceValue.Interface().([]User)
 fmt.Printf("1st user name %s\n", users[0].Name)
 ```
 
-创建 map
+#### 创建 map
+
 ```go
 var userMap map[int]*User
 mapType := reflect.TypeOf(userMap)
@@ -522,4 +534,6 @@ mapValue.MapIndex(key).Elem().FieldByName("Name").SetString("令狐一刀") //Ma
 userMap = mapValue.Interface().(map[int]*User)
 fmt.Printf("user name %s %s\n", userMap[7].Name, user.Name)
 ```
+
+
 reflect 包里除了 MakeSlice()和 MakeMap()，还有 MakeChan()和 MakeFunc()
