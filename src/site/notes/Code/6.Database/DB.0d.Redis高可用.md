@@ -65,7 +65,7 @@ replicaof {master 的 IP 地址} {slave 的 Redis 端口号}
 2. 主服务器用 `CONTINUE` 响应命令，表示采用**增量复制的方式**同步数据
 3. 主服务器发送网络断开期间主服务器接收的写操作命令，从服务器执行命令
 
-具体的增量数据通过*repl_backlog_buffer*和*replication offset*确认
+具体的增量数据通过 *repl_backlog_buffer* 和 *replication offset* 确认
 
 repl_backlog_buffer 是一个 **环形缓冲区**，Redis 主节点每次收到写命令之后，先写到内部的 repl_backlog_buffer 缓冲区，然后**异步发送给从节点**
 主节点使用 `master_repl_offset` 标记缓冲区中当前写入的位置，从节点使用 `slave_repl_offset` 标记缓冲区中当前读出的位置
@@ -126,7 +126,7 @@ Redis 通过互相的 ping-pong 心跳检测机制检测断连，如果一半以
 > [xiaolincoding.com](https://xiaolincoding.com/redis/cluster/master_slave_replication.html#%E9%9B%86%E7%BE%A4%E4%BA%A7%E7%94%9F%E8%84%91%E8%A3%82%E6%95%B0%E6%8D%AE%E4%B8%A2%E5%A4%B1)
 
 问题：
-主节点与从节点失联但与客户端连接正常，重新上线时变为新主节点的从节点，清空数据重新全量同步，导致失联后客户端写入的数据丢失，
+主节点与从节点失联但与客户端连接正常，重新上线时变为新主节点的从节点，清空数据重新全量同步，导致失联后客户端写入的数据丢失
 
 解决方案：
 当主节点发现**从节点下线的数量太多**或**网络延迟太大**时，主节点会禁止写操作，直接把错误返回给客户端
