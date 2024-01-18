@@ -1,9 +1,9 @@
 ---
-{"dg-publish":true,"permalink":"/Code/6.Database/DB.1e.Mysql锁/","title":"Mysql锁","noteIcon":""}
+{"dg-publish":true,"permalink":"/Code/6.Database/DB.1e.Mysql锁/","title":"Mysql 锁","noteIcon":""}
 ---
 
 
-# Mysql锁
+# Mysql 锁
 
 Mysql 锁分类：
 - 根据加锁的范围锁
@@ -23,7 +23,6 @@ Mysql 锁分类：
 
 共享锁的不排斥仅针对不同事务之间读读共享
 表锁和行锁满足读读共享、读写互斥、写写互斥
-
 
 ## 全局锁
 
@@ -78,9 +77,9 @@ MDL 锁在事务提交后被释放，且 **MDL 写锁获取优先级高于读锁
 - 在使用 InnoDB 引擎的表里对某些记录加上*共享锁*之前，需要先在表级别加上一个*意向共享锁*
 - 在使用 InnoDB 引擎的表里对某些记录加上*排他锁*之前，需要先在表级别加上一个*意向排他锁*
 
-**意向共享锁和意向独占锁是表级锁，不会和行级的共享锁和独占锁发生冲突，而且意向锁之间也不会发生冲突，只会和共享表锁（ `lock tables ... read` ）和独占表锁（ `lock tables ... write` ）发生冲突**
+意向共享锁和意向独占锁是表级锁，**不会和行级的共享锁和独占锁发生冲突，而且意向锁之间也不会发生冲突，只会和共享表锁( `lock tables … read` )和独占表锁( `lock tables … write` )发生冲突**
 
-意向锁的目的是快速判断表里是否有记录被加锁
+意向锁的目的是**快速判断表里是否有记录被加锁**
 
 ### AUTO-INC锁
 
@@ -236,7 +235,22 @@ UPDATE ... SET version = version + 1 ... WHERE ... AND version = version;
 
 ## 死锁
 
-死锁的四个必要条件：**互斥、占有且等待、不可强占用、循环等待**
+
+<div class="transclusion internal-embed is-loaded"><a class="markdown-embed-link" href="/code/4-operating-system/os-0c1/#" aria-label="Open link"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a><div class="markdown-embed">
+
+
+
+### 死锁条件
+
+死锁只有**同时满足**以下四个条件才会发生：
+- **互斥** - 多个线程不能同时使用同一个资源
+- **占有并等待** - 线程在等待时不释放自己已持有的资源
+- **不可抢占** - 当资源已被线程持有时，在该线程使用完之前不能被其他线程获取
+- **循环等待** - 两个线程获取资源的顺序构成了环形链
+
+
+</div></div>
+
 
 可以使用 `select * from performance_schema.data_locks\G` 语句查看 Mysql 加锁情况
 
@@ -247,5 +261,7 @@ UPDATE ... SET version = version + 1 ... WHERE ... AND version = version;
 - 事务之间因为持有锁和申请锁导致彼此循环等待
 
 Mysql有两种策略通过*打破循环等待条件*来解除死锁状态：
-- 设置事务等待锁的超时时间，当一个事务的等待时间超过该值后进行回滚释放锁，InnoDB 中通过参数 `innodb_lock_wait_timeout` 设置超时时间，默认值为50s
-- 开启主动死锁检测，主动死锁检测在发现死锁后，主动回滚死锁链条中的某一个事务，让其他事务得以继续执行，通过参数 `innodb_deadlock_detect`设置，默认为on
+- 设置事务等待锁的超时时间，当一个事务的等待时间超过该值后进行回滚释放锁，InnoDB 中通过参数 `innodb_lock_wait_timeout` 设置超时时间，默认值为 50s
+- 开启主动死锁检测，主动死锁检测在发现死锁后，主动回滚死锁链条中的某一个事务，让其他事务得以继续执行，通过参数 `innodb_deadlock_detect` 设置，默认为 on
+
+>  [mysql死锁场景整理 - 简书 (jianshu.com)](https://www.jianshu.com/p/2f17a939e030)
