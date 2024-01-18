@@ -66,9 +66,9 @@ Buffer Pool是MySQL用于缓存磁盘上的数据页的内存区域，它可以�
 ## 执行
 
 一条 SQL 语句的执行过程主要可以分为三个阶段：
-- prepare 预处理阶段
-- optimize 优化阶段
-- execute 执行阶段
+1. prepare 预处理阶段
+2. optimize 优化阶段
+3. execute 执行阶段
 
 ### 预处理器
 
@@ -127,6 +127,7 @@ InnoDB 存储引擎支持事务并发，所以无法像 MyISAM 一样，维护�
 通过在查询语句前加入 `EXPLAIN` 可输出语句的执行计划
 
 结果参数包括：
+
 |       列名        | 描述                                                      |
 |:-----------------:|:--------------------------------------------------------- |
 |        id         | 在一个大的查询语句中每个 SELECT 关键字都对应一个唯一的 id |
@@ -164,17 +165,17 @@ EXPLAIN 语句输出的每条记录都对应着某个单表的访问方法，该
 
 *rows* 为解析器预估的扫描数据行数，通常小于实际值
 
-- `Extra`
-  - `Using filesort` ：当查询语句中包含排序 order by 操作且无法利用索引直接完成排序操作时，不得不选择相应的排序算法甚至通过文件排序，效率低
-  - `Using temporary`：使用了临时表保存中间结果，MySQL 在对查询结果排序时使用临时表，常见于排序 order by 和分组查询 group by，效率低
-  - `Using index`：使用了覆盖索引，避免了回表操作，效率高
-  - `Using where`：存储引擎搜到记录后根据 WHERE 条件进行了进一步过滤
-  - `Using join buffer`：在获取连接条件时没有用到索引，并且需要连接缓冲区来存储中间结果
-  - `Using index condition`： 使用了索引下推
-  - `Impossible where`： 查询语句的 WHERE 子句永远为 FALSE
-  - `No tables used`：查询语句没有 FROM 子句
+*Extra* 参数包含多种情况
+- `Using filesort` ：当查询语句中包含排序 order by 操作且无法利用索引直接完成排序操作时，不得不选择相应的排序算法甚至通过文件排序，效率低
+- `Using temporary`：使用了临时表保存中间结果，MySQL 在对查询结果排序时使用临时表，常见于排序 order by 和分组查询 group by，效率低
+- `Using index`：使用了覆盖索引，避免了回表操作，效率高
+- `Using where`：存储引擎搜到记录后根据 WHERE 条件进行了进一步过滤
+- `Using join buffer`：在获取连接条件时没有用到索引，并且需要连接缓冲区来存储中间结果
+- `Using index condition`： 使用了索引下推
+- `Impossible where`： 查询语句的 WHERE 子句永远为 FALSE
+- `No tables used`：查询语句没有 FROM 子句
 
-> 在连接查询执行过程中，当被驱动表不能有效的利用索引加快访问速度， MySQL 一般为其分配一块名为 join buffer 的内存块来加快查询速度
+> 在连接查询执行过程中，当被驱动表不能有效的利用索引加快访问速度， MySQL 一般为其分配一块名为 `join buffer` 的内存块来加快查询速度
 
 ### 执行器
 
