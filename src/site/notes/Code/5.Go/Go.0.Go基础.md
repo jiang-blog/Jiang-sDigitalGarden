@@ -29,7 +29,7 @@ arr := [...]int{1, 2, 3, 4, 5}
 sum(arr...) // 编译无法通过,cannot use arr (type [5]int) as type []int in argument to sum
 ```
 
-…运算符是个语法糖，**它把前面的slice直接复制给可变参数，而不是先解包成独立的n个参数再传递**
+`…`运算符是个语法糖，**它把前面的slice直接复制给可变参数，而不是先解包成独立的n个参数再传递**
 
 **不能把独立传参和…运算符混用**
 
@@ -102,6 +102,36 @@ for {
 
 此外，Go 语言遍历数组或者切片并删除全部元素的逻辑会被优化为直接清除目标数组内存空间中的全部数据
 
+### switch
+
+```go
+switch simpleStatement; condition {
+    case expression1,expression2:
+        statements
+    case expression3:
+        statements
+        fallthrough
+    default:
+        statements
+}
+```
+
+Go 语言中匹配到一个 case 条件执行完对应的逻辑之后就会跳出这个 switch 语句，等价于每个 case 处理逻辑之后都加了一个隐式的 break 语句
+如果不想要隐式退出的话可以使用 fallthrough 语句来继续下一个 case 的处理逻辑
+同时也可以显示调用 break 提前跳出
+
+switch 条件还可以用于类型判断
+```go
+i := interface{}(123)
+switch i.(type) {
+case int:
+    println("int")
+case int64:
+    println("int64")
+case float64:
+    println("float64")
+}
+```
 ### make & new
 
 `make` 函数只用于 map，slice 和 channel 初始化，并且不返回指针，因为这三种类型本身即为引用类型
@@ -314,6 +344,78 @@ func main() {
   - **所有线程都休眠**：死锁
   - **重复解锁互斥锁**
 
+## 泛型
+
+>  [泛型 | 李文周的博客 (liwenzhou.com)](https://www.liwenzhou.com/posts/Go/generics/)
+
+Go 1.18版本增加了对泛型的支持
+
+泛型为 Go 语言添加了三个新的重要特性
+- 函数和类型的类型参数
+- 将接口类型定义为类型集，包括没有方法的类型
+- 类型推断，允许在调用函数时在许多情况下省略类型参数
+
+Go 语言中的函数和类型支持添加类型参数，类型参数列表看起来像普通的参数列表，只不过使用方括号 `[]`
+对于类型参数，可以从实参的类型推断出函数的类型实参，但只适用于函数参数中使用的类型参数，而不适用于仅在函数结果中或仅在函数体中使用的类型参数
+
+
+函数
+```go
+// 类型约束字面量，通常外层interface{}可省略
+func min[T interface{ int | float64 }](a, b T) T {
+	if a <= b {
+		return a
+	}
+	return b
+}
+
+// 事先定义好的类型约束类型
+type Value interface {
+	int | float64
+}
+func min[T Value](a, b T) T {
+	if a <= b {
+		return a
+	}
+	return b
+}
+
+var a, b, m float64
+m = min[float64](a, b) // 显式指定类型实参
+m = min(a, b)          // 无需指定类型实参
+```
+
+类型
+```go
+type Slice[T int | string] []T
+
+type Map[K int | string, V float32 | float64] map[K]V
+
+type Tree[T interface{}] struct {
+	left, right *Tree[T]
+	value       T
+}
+
+func (t *Tree[T]) Lookup(x T) *Tree[T] { ... }
+```
+
+### 约束类型推断
+
+```go
+func Scale[S ~[]E, E constraints.Integer](s S, c E) S {
+    r := make(S, len(s))
+    for i, v := range s {
+        r[i] = v * c
+    }
+    return r
+}
+
+type Point []int32
+var p Point{1,2,3}
+Scale(p,2)
+```
+
+对于 `Scale` 函数，当 S 的类型确定时，编译器通过约束类型推断从类型参数约束推导类型参数，由已知的类型 `Point` 推断出 `E` 的类型 `int32`
 
 ## Go 初始化
 
