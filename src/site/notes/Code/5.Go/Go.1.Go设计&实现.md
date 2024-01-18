@@ -6,7 +6,7 @@
 # Go 设计&实现
 
 [[Code/5.Go/Go.1a.Go垃圾回收\|Go.1a.Go垃圾回收]]
-[[Code/5.Go/Go.1b.Go并发实现\|Go.1b.Go并发实现]]
+[[Code/5.Go/Go.1b.Go并发模型\|Go.1b.Go并发模型]]
 [[Code/5.Go/Go.1c.Go内存管理\|Go.1c.Go内存管理]]
 [[Code/5.Go/Go.1d.Go编译优化\|Go.1d.Go编译优化]]
 
