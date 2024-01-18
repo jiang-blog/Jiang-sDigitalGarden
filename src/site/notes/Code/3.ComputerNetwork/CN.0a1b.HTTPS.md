@@ -107,36 +107,36 @@ TLS1.2 的握手阶段涉及四次通信，使用不同的密钥交换算法的�
 
 #### RSA
 
+服务器和客户端**用双方协商的加密算法对过程中交换的三个随机数 `Client Random`、`Server Random`、`pre-master key` 进行加密**，各自生成相同的*会话秘钥(共享密钥)* 用于本次通信的对称加密
+
 RSA 算法握手具体流程：
 1. 第一次握手，客户端向服务器发起加密通信  `Client Hello`  请求
         - 客户端支持的 TLS 协议版本
         - 客户端生产的随机数 `Client Random`
         - 客户端支持的密码套件列表，如 RSA 加密算法
-2. 第二次握手，服务端响应请求
-    1. `Sever Hello`
+2. 第二次握手，服务端响应请求，返回服务器数字证书(包含服务器公钥)
+    -  `Sever Hello`
           - 确认支持 TLS 协议的版本(不支持时关闭加密通信)
           - 服务器生产的随机数 `Server Random`
           - 确认的密码套件，如 RSA 加密算法
-    2. `Server Hello Done`
+    - `Server Hello Done`
         - 告知客户端内容发送完毕
-    3. `Server Certificate`
+    - `Server Certificate`
         - 服务器的数字证书
-3. 客户端通过 CA 公钥验证数字证书，取出服务器公钥，生成一个随机数 `pre-master`，进而通过协商的加密算法生成会话密钥
-4. 第三次握手，客户端向服务器发送报文
-    1. `Cilent Key Exchange`
+3. 客户端通过 CA 公钥验证数字证书，取出服务器公钥，生成一个随机数 `pre-master`，进而**用双方协商的加密算法对过程中交换的三个随机数 `Client Random`、`Server Random`、`pre-master key` 进行加密**
+4. 第三次握手，客户端向服务器发送以服务器公钥加密的随机数
+    - `Cilent Key Exchange`
         - 以服务器公钥加密的随机数 `pre-master`
-    2. `Change Cipher Spec`
+    - `Change Cipher Spec`
         - 加密通信算法改变通知，表示随后的信息都将用会话秘钥加密通信
-    3. `Encrypted Handshake Message（Finishd)`
+    - `Encrypted Handshake Message(Finishd)`
         - 客户端握手结束通知，表示客户端的握手阶段已经结束，同时将之前所有内容生成摘要，用会话密钥加密供服务端校验
 5. 服务器通过协商的加密算法计算出本次通信的会话秘钥
-6. 第四次握手，服务器响应报文
-    1. `Change Cipher Spec`
+6. 第四次握手，服务器发送响应报文确认 TLS 握手完成
+    - `Change Cipher Spec`
         - 加密通信算法改变通知，表示随后的信息都将用会话秘钥加密通信
-    2. `Encrypted Handshake Message`
+    - `Encrypted Handshake Message`
         - 服务器握手结束通知，表示服务器的握手阶段已经结束，同时将之前所有内容生成加密摘要供客户端校验
-
-服务器和客户端**用双方协商的加密算法对过程中交换的三个随机数 `Client Random`、`Server Random`、`pre-master key` 进行加密**，各自生成相同的*会话秘钥(共享密钥)* 用于本次通信的对称加密
 
 基于 RSA 算法的 HTTPS 存在**前向安全问题**：**如果服务端的私钥泄漏了，过去被第三方截获的所有 TLS 通讯密文都会被破解**
 
@@ -149,50 +149,49 @@ RSA 算法握手具体流程：
 > $$ K={b_s}^{i_c}(mod\ p)=(a^{i_s})^{i_c}(mod\ p)=(a^{i_c})^{i_s}(mod\ p)= {b_c}^{i_s}(mod\ p)$$
 > K 即为客户端与服务端之间的**对称加密密钥**，可以作为会话密钥使用
 
-**为实现前向安全，每次通信随机生成私钥**，但计算量大，性能不佳
+**为实现前向安全每次通信需要随机生成私钥**，但计算量大，性能不佳
 *ECDHE 算法*通过 ECC 椭圆曲线特性，可以用更少的计算量计算出公钥，以及最终的会话密钥
 1. 双方事先确定好使用哪种椭圆曲线，和曲线上的基点 G，这两个参数公开不加密
 2. 双方各自随机生成一个随机数作为私钥 d，并与基点 G 相乘得到公钥 `Q = dG`，此时客户端的公私钥为 Q1 和 d1，服务器的公私钥为 Q2 和 d2
 3. 双方交换各自的公钥，最后客户端计算点 `(x1，y1) = d1Q2`，服务器计算点 `(x2，y2) = d2Q1`，由于椭圆曲线满足乘法交换和结合律，所以 `d1Q2 = d1d2G = d2d1G = d2Q1` ，因此双方的 x 坐标是一样的，所以它是共享密钥，也就是会话密钥
 
 ECDHE 算法握手具体流程：
-1. 第一次握手
-    1. 客户端向服务器发起加密通信 ` Client Hello ` 请求
-        - 客户端支持的 TLS 协议版本
-        - 客户端生产的随机数 `Client Random`
-        - 客户端支持的密码套件列表
-2. 第二次握手，**服务器生成随机数作为服务端椭圆曲线的私钥
-    1. `Sever Hello`
+1. 第一次握手， 客户端向服务器发起加密通信 `Client Hello` 请求
+    - 客户端支持的 TLS 协议版本
+    - 客户端生产的随机数 `Client Random`
+    - 客户端支持的密码套件列表
+2. 第二次握手，**服务器生成随机数作为服务端椭圆曲线的私钥**，并将服务端公钥发送给客户端
+    - `Sever Hello`
         - 确认支持 TLS 协议的版本(不支持时关闭加密通信)
         - 服务器生产的随机数 `Server Random`
         - 确认的密码套件
-    2. `Server Certificate`
+    - `Server Certificate`
         - 服务器的数字证书
-    3. `Server Key Exchange`
+    - `Server Key Exchange`
         - 选择的椭圆曲线类型(同时确定了基点G)
         - 根据基点 G 和私钥计算出的服务端的椭圆曲线公钥(用 RSA 签名算法进行数字签名)
-    4. `Server Hello Done`
+    - `Server Hello Done`
         - 告知客户端内容发送完毕
 3. 客户端通过 CA 公钥验证服务器身份，**生成一个随机数作为客户端椭圆曲线的私钥，进而生成客户端的椭圆曲线公钥**，同时通过协商的加密算法生成会话密钥
-4. 第三次握手
-    1. 客户端向服务器发送 `Cilent Key Exchange` 报文
+4. 第三次握手，客户端向服务器发送客户端公钥
+    - `Cilent Key Exchange`
         - 客户端椭圆曲线公钥
-    2. 客户端向服务器发送 `Change Cipher Spec` 报文
+    - `Change Cipher Spec`
         - 加密通信算法改变通知，表示随后的信息都将用会话秘钥加密通信
-    3. 客户端向服务器发送 `Encrypted Handshake Message（Finishd)` 报文
+    - `Encrypted Handshake Message（Finishd)`
         - 客户端握手结束通知，表示客户端的握手阶段已经结束，同时将之前所有内容生成摘要，用会话密钥加密供服务端校验
 5. 服务器通过协商的加密算法计算出本次通信的会话秘钥
-6. 第四次握手
-    1. 服务器向客户端发送 `Change Cipher Spec` 报文
+6. 第四次握手，服务器发送响应报文确认 TLS 握手完成
+    - `Change Cipher Spec`
         - 加密通信算法改变通知，表示随后的信息都将用会话秘钥加密通信
-    2. 服务器向客户端发送 `Encrypted Handshake Message` 报文
+    - `Encrypted Handshake Message`
         - 服务器握手结束通知，表示服务器的握手阶段已经结束，同时将之前所有内容生成加密摘要供客户端校验
 
 ### TLS1.3
 
 TLS 1.3 把 Hello 和公钥交换这两个消息合并成了一个消息，只需 1 RTT 就能完成 TLS 握手
 
-> ![tls1.2and1.3.png (1832×1290) (xiaolincoding.com)](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E7%BD%91%E7%BB%9C/https%E4%BC%98%E5%8C%96/tls1.2and1.3.png)
+> ![tls1.2and1.3.png (1832×1290) (xiaolincoding.com)|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E7%BD%91%E7%BB%9C/https%E4%BC%98%E5%8C%96/tls1.2and1.3.png)
 
 具体做法：
 1. 客户端在第一次握手时的 `Client Hello` 消息里带上了支持的椭圆曲线以及这些椭圆曲线对应的公钥
@@ -207,14 +206,15 @@ TLS 1.3 把 Hello 和公钥交换这两个消息合并成了一个消息，只�
 
 *Session ID*
 客户端和服务器首次 TLS 握手连接后，双方会在内存缓存会话密钥，并用唯一的 Session ID 来标识
-当客户端再次连接时，hello 消息里会带上 Session ID，服务器收到后就会从内存找，如果找到就直接用该会话密钥恢复会话状态，跳过其余的过程，只用一个消息往返就可以建立安全通信
-为了安全性，内存中的会话密钥会定期失效
+当客户端再次连接时，hello 消息里会带上 Session ID，服务器收到后从内存查询，有则直接用该会话密钥恢复会话状态，跳过其余的过程，只用一个 RTT 就可以建立安全通信
+同时为了安全性，内存中的会话密钥会定期失效
+
 缺点：
 - 服务器必须保持每一个客户端的会话密钥，随着客户端的增多，**服务器的内存压力也会越大**
 - 现在网站服务一般是由多台服务器通过负载均衡提供服务的，**客户端再次连接不一定会命中上次访问过的服务器**，于是还要走完整的 TLS 握手过程
 
 *Session Ticket*
-服务器不再缓存每个客户端的会话密钥，而是把缓存的工作交给了客户端
+服务器不再缓存每个客户端的会话密钥，而是把缓存的工作交给客户端
 客户端与服务器首次建立连接时，服务器会加密「会话密钥」作为 Ticket 发给客户端，交给客户端缓存该 Ticket
 客户端再次连接服务器时，客户端会发送 Ticket，服务器解密后就可以获取上一次的会话密钥，然后验证有效期，如果没问题，就可以恢复会话了，开始加密通信
 
@@ -231,8 +231,9 @@ Session ID 和 Session Ticket 都**不具备前向安全性**，一旦加密会�
 Pre-shared Key 也有重放攻击的危险
 
 > [!Note] 重放攻击
-> ![重放攻击](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E7%BD%91%E7%BB%9C/https%E4%BC%98%E5%8C%96/%E9%87%8D%E6%94%BE%E6%94%BB%E5%87%BB.png)
-> 假设 Alice 想向 Bob 证明自己的身份。 Bob 要求 Alice 的密码作为身份证明，爱丽丝应尽全力提供(可能是在经过如哈希函数的转换之后)。与此同时，Eve 窃听了对话并保留了密码(或哈希)
+> ![重放攻击|600](https://cdn.xiaolincoding.com/gh/xiaolincoder/ImageHost4@main/%E7%BD%91%E7%BB%9C/https%E4%BC%98%E5%8C%96/%E9%87%8D%E6%94%BE%E6%94%BB%E5%87%BB.png)
+> 假设 Alice 想向 Bob 证明自己的身份。 Bob 要求 Alice 的密码作为身份证明，爱丽丝应尽全力提供(可能是在经过如哈希函数的转换之后)
+> 与此同时，Eve 窃听了对话并保留了密码(或哈希)
 > 交换结束后，Eve(冒充 Alice )连接到 Bob。当被要求提供身份证明时，Eve 发送从 Bob 接受的最后一个会话中读取的 Alice 的密码(或哈希)，从而授予 Eve 访问权限
 > 重放攻击的危险之处在于，如果中间人截获了某个客户端的 Session ID 或 Session Ticket 以及 POST 报文，而一般 POST 请求会改变数据库的数据，中间人就可以利用此截获的报文，不断向服务器发送该报文，这样就会导致数据库的数据被中间人改变了，而客户是不知情的
 >避免重放攻击的方式就是需要**对会话密钥设定一个合理的过期时间**
