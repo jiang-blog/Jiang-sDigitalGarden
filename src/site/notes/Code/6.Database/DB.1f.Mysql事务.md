@@ -88,7 +88,7 @@ SQL标准针对并发事务执行提出了四种隔离级别，隔离级别越�
 
 ### MVCC
 
-MVCC即**多版本并发控制**，通过比较读取行记录的trx_id与Read View确认记录版本，**通过版本链控制并发事务访问**
+MVCC 即**多版本并发控制**，通过比较读取行记录的 `trx_id` 与 Read View 确认记录版本，**通过版本链控制并发事务访问** 
 
 事务更新行记录后 Mysql 记录相应的 undo log，通过 [[Code/6.Database/DB.1c.InnoDB数据管理#隐藏字段\|行记录隐藏字段]]中的 roll_pointer 串联 undo log 形成版本链，并将最新记录的 trx_id 设为当前事务 id
 
@@ -98,7 +98,7 @@ MVCC即**多版本并发控制**，通过比较读取行记录的trx_id与Read V
   - `trx_id` 在 `m_ids` 中：该版本记录可能创建/更新于当前事务启动后，不可见
   - `trx_id` 不在 `m_ids` 中：该版本记录创建/更新于当前事务启动前，可见
 
-只有在聚簇索引记录中才有 trx_id 和 roll_pointer，如果某个查询语句使用二级索引来查询，要使用下面的方式判断可见性：
+只有在聚簇索引记录中才有 `trx_id` 和 `roll_pointer`，如果某个查询语句使用二级索引来查询，要使用下面的方式判断可见性：
 二级索引树索引页的 [[Code/6.Database/DB.1c.InnoDB数据管理#页结构\|Page Header]] 部分存在 `PAGE_MAX_TRX_ID` 属性，记录修改该索引页的最大事务 id
 执行增删改操作时，如果执行该操作的事物的事务 id 大于 `PAGE_MAX_TRX_ID`，则将 `PAGE_MAX_TRX_ID` 设置为执行操作的事务 id
 
