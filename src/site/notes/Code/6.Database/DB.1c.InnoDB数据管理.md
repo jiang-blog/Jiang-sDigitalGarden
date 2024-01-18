@@ -83,6 +83,70 @@ InnoDB 以页作为内存和磁盘交互的基本单位读取数据，每个页�
 
 > [从数据页的角度看 B+ 树 | 小林coding (xiaolincoding.com)](https://xiaolincoding.com/mysql/index/page.html)
 
+### B+树
+
+
+<div class="transclusion internal-embed is-loaded"><a class="markdown-embed-link" href="/code/6-database/db-1a-mysql/#b" aria-label="Open link"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-link"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></a><div class="markdown-embed">
+
+
+
+### B+树索引
+
+> [为什么 MySQL 采用 B+ 树作为索引？ | 小林coding ](https://xiaolincoding.com/mysql/index/why_index_chose_bpuls_tree.html#%E4%BB%80%E4%B9%88%E6%98%AF-b-%E6%A0%91)
+
+> ![7c635d682bd3cdc421bb9eea33a5a413.png (1080×509) (xiaolincoding.com)](https://cdn.xiaolincoding.com//mysql/other/7c635d682bd3cdc421bb9eea33a5a413.png)
+
+特点：基于磁盘的多叉平衡树，通常只有3~4层，磁盘I/O次数少，**查询效率高**
+
+B+树是一种多叉树，**叶子节点存放实际数据(索引+记录)**，非叶子节点只存放索引
+- 每个节点里的数据**按主键顺序存放**
+- 每一层父节点的索引值都会出现在下层子节点的索引值中，并且是子节点中所有索引的最大或最小
+- 每个叶子节点都包含有前后叶子节点的指针，**构成双向链表**，有助于范围查找
+- B+ 树在删除根节点的时候，由于存在冗余的节点，所以不会发生复杂的树的变形
+
+所有 B+树都从高度为1的树开始慢慢增加高度
+B+ 树在删除根节点的时候，由于存在冗余的节点，所以不会发生复杂的树的变形
+
+InnoDB 里的 B+ 树中的**每个节点都是一个数据页**，**非叶子节点的大小受页限制**
+
+#### 插入删除
+
+> [B树和B+树的插入、删除图文详解 - nullzx - 博客园 (cnblogs.com)](https://www.cnblogs.com/nullzx/p/8729425.html)
+
+记叶子节点最多存储数据为 m 条
+
+B+树插入
+1. 若为空树，创建一个叶子结点，然后将记录插入其中，此时这个叶子结点也是根结点，插入操作结束
+2. 针对叶子类型结点
+    1. 根据 key 值找到叶子结点，向这个叶子结点插入记录
+    2. 插入后，若当前结点 key 的个数小于等于 m-1，则插入结束
+    3. 否则将这个叶子结点分裂成左右两个叶子结点，左叶子结点包含前 m/2 个记录，右结点包含剩下的记录，将第 m/2+1 个记录的 key 进位到父结点(索引类型结点)中，进位到父结点的 key 左孩子指针向左结点,右孩子指针向右结点。将当前结点的指针指向父结点
+3. 针对索引类型结点
+    1. 若当前结点 key 的个数小于等于 m-1，则插入结束
+    2. 否则，将这个索引类型结点分裂成两个索引结点，左索引结点包含前(m-1)/2 个 key，右结点包含 m-(m-1)/2 个 key，将第 m/2 个 key 进位到父结点中，进位到父结点的 key 左孩子指向左结点, 进位到父结点的 key 右孩子指向右结点，将当前结点的指针指向父结点，继续对父节点进行循环
+
+B+树删除
+1. 删除叶子结点中对应的 key，删除后若结点的 key 的个数大于等于 `Math.ceil(m-1)/2 – 1`，删除操作结束，否则继续
+2. 若兄弟结点 key 有富余(大于 `Math.ceil(m-1)/2 – 1`)，向兄弟结点借一个记录，同时用借到的 key 替换当前结点和兄弟结点共同的父结点中的 key，删除结束
+3. 若兄弟结点中没有富余的 key，则当前结点和兄弟结点合并成一个新的叶子结点，并删除父结点中的一个对应 key，将当前结点指向父结点(索引结点)
+4. 若索引结点的 key 的个数大于等于 `Math.ceil(m-1)/2 – 1`，则删除操作结束
+    1. 若兄弟结点有富余，父结点 key 下移，兄弟结点 key 上移，删除结束
+    2. 否则当前结点，兄弟结点及父结点下移 key 合并成一个新的结点
+5. 将当前结点指向父结点，继续对父节点进行循环
+
+注意，**通过 B+树的删除操作后，索引结点中存在的 key，不一定在叶子结点中存在对应的记录**
+
+#### 比较其他树
+
+- 二叉查找树：极端情况下查找数据的时间复杂度为 O(n)
+- 自平衡二叉树：树的高度较高，需要多次磁盘 IO，每次插入新节点的复杂度不定
+- 红黑树：保证每次插入最多只需要三次旋转就能达到平衡，树的高度较高
+- B 树：在数据查询中比平衡二叉树效率要高，但读取过程中非叶子节点中的数据也被加载进缓存，非叶子节点内可存储索引少
+
+
+</div></div>
+
+
 ### 数据页 - 叶子节点
 
 > ![|475](https://cdn.xiaolincoding.com//mysql/other/243b1466779a9e107ae3ef0155604a17.png)
@@ -268,6 +332,10 @@ InnoDB 使用 **WAL (Write-Ahead Logging)技术**，通过先写 [[Code/6.Databa
 - Mysql 正常关闭前将所有脏页写入
 
 可通过 `innodb_max_dirty_pages_pct_lwm` 参数(default:0)启用*脏页预刷新*，在脏页占有率超过 `innodb_max_dirty_pages_pct` (default:75)时强制写入
+
+> [!note] WAL 预写日志
+> 在计算机科学中，「预写式日志」（Write-ahead logging，缩写 WAL）是关系数据库系统中用于提供原子性和持久性的一系列技术
+> 在使用 WAL 的系统中，所有的修改在提交之前都要先写入 log 文件中
 
 #### 主从同步
 
